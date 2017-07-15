@@ -4,6 +4,67 @@
    
 NOTE: This is an `OASIS Open Repository <https://www.oasis-open.org/resources/open-repositories/>`_. See the `Governance`_ section for more information.
 
+cti-taxii-client is a minimal implementation of client for the TAXII 2.0 server.  It supports the following TAXII 2.0 API services:
+
+- Server Discovery
+- Get API Root Information
+- Get Status
+- Get Collections
+- Get a Collection
+- Get Objects
+- Add Objects
+- Get an Object
+- Get Object Manifests
+
+`Installation`
+==============
+
+The easiest way to install the TAXII client is with pip:
+
+::
+
+  $ pip install taxii2_client
+  
+`Usage`
+=======
+
+The TAXII client is intended to be used as a python library.  There is no support to run it independently.
+
+.. code:: python
+
+  import taxii2_client
+
+  client = taxii2_client.TAXII2Client("http://taxii_server", "user_id", "user_password")
+  
+The authorization information is stored in the TAXII client instance, so it need not be supplied explicitly when request services.
+  
+Once you have instantiated a TAXII client, you can get all meta data about the contents of the TAXII server as follows:
+
+.. code:: python
+
+  client.populate_available_information()
+  
+This will cache the server's information in the client instance in instance variables:
+
+- api_roots
+- title
+- description
+- default_api_root
+
+Each api_root found on the server will be instantiated with its meta data
+
+- name
+- collections
+- information
+
+Each collection found in an api_root will be instantiated with its meta data
+
+- media_types
+- title
+- can_write
+- can_read
+- description
+  
 Governance
 ==========
 
