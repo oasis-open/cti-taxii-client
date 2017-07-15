@@ -83,16 +83,8 @@ milestones, releases, modifications to statement of purpose, etc. The
 project Maintainers will create and maintain this content on behalf of
 the participants.
 
-.. raw:: html
-
-   </div>
-
-.. raw:: html
-
-   <div>
-
-.. rubric:: Maintainers
-   :name: maintainers
+`Maintainers`
+=============
 
 Open Repository
 `Maintainers <https://www.oasis-open.org/resources/open-repositories/maintainers-guide>`__
