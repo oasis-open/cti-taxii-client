@@ -8,7 +8,7 @@ NOTE: This is an `OASIS Open Repository <https://www.oasis-open.org/resources/op
 Governance
 ==========
 
-This GitHub public repository ( `https://github.com/oasis-open/cti-stix-validator <https://github.com/oasis-open/cti-stix-validator>`_ ) was `proposed <https://lists.oasis-open.org/archives/cti/201609/msg00001.html>`_ and `approved <https://www.oasis-open.org/committees/ballot.php?id=2971>`_ [`bis <https://issues.oasis-open.org/browse/TCADMIN-2434>`_] by the `OASIS Cyber Threat Intelligence (CTI) TC <https://www.oasis-open.org/committees/cti/>`_ as an `OASIS Open Repository <https://www.oasis-open.org/resources/open-repositories/>`_ to support development of open source resources related to Technical Committee work.
+This GitHub public repository ( `https://github.com/oasis-open/cti-stix-validator <https://github.com/oasis-open/cti-taxii-client>`_ ) was `proposed <https://lists.oasis-open.org/archives/cti/201609/msg00001.html>`_ and `approved <https://www.oasis-open.org/committees/ballot.php?id=2971>`_ [`bis <https://issues.oasis-open.org/browse/TCADMIN-2434>`_] by the `OASIS Cyber Threat Intelligence (CTI) TC <https://www.oasis-open.org/committees/cti/>`_ as an `OASIS Open Repository <https://www.oasis-open.org/resources/open-repositories/>`_ to support development of open source resources related to Technical Committee work.
 
 While this Open Repository remains associated with the sponsor TC, its development priorities, leadership, intellectual property terms, participation rules, and other matters of governance are `separate and distinct <https://github.com/oasis-open/cti-stix-validator/blob/master/CONTRIBUTING.md#governance-distinct-from-oasis-tc-process>`_ from the OASIS TC Process and related policies.
 
