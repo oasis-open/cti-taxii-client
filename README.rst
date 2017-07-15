@@ -1,16 +1,11 @@
-.. raw:: html
+====================
+`cti-taxii-client`
+====================
+   
+NOTE: This is an `OASIS Open Repository <https://www.oasis-open.org/resources/open-repositories/>`_. See the `Governance`_ section for more information.
 
-   <div>
-
-.. rubric:: README
-   :name: readme
-
-.. raw:: html
-
-   <div>
-
-.. rubric:: OASIS Open Repository: cti-taxii-client
-   :name: oasis-open-repository-cti-taxii-client
+Governance
+==========
 
 This GitHub public repository (
 **https://github.com/oasis-open/cti-taxii-client** ) was created at the
