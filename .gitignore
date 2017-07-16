@@ -92,3 +92,5 @@ ENV/
 .ropeproject
 
 .idea/
+
+taxii2_client/test

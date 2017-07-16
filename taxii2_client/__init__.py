@@ -31,11 +31,15 @@ class Collection(object):
         self.description = description
 
     def get_object(self, obj_id):
+        if not self.can_read:
+            raise ValueError("Collection %s of %s does not allow reading" % (self.id_, self.api_root.uri))
         return self.taxii_client.send_request("get",
                                               "/".join([self.api_root.uri, "collections", self.id_, "objects", obj_id]),
                                               {"Accept": MEDIA_TYPE_STIX_V20})
 
     def get_objects(self, filters=None):
+        if not self.can_read:
+            raise ValueError("Collection %s of %s does not allow reading" % (self.id_, self.api_root.uri))
         return self.taxii_client.send_request("get",
                                               "/".join([self.api_root.uri, "collections", self.id_, "objects"]),
                                               {"Accept": MEDIA_TYPE_STIX_V20},
@@ -43,6 +47,8 @@ class Collection(object):
 
 
     def add_objects(self, bundle):
+        if not self.can_write:
+            raise ValueError("Collection %s of %s does not allow writing" % (self.id_, self.api_root.uri))
         info = self.taxii_client.send_request("post",
                                               "/".join([self.api_root.uri, "collections", self.id_, "objects"])+"/",
                                               {"Accept": MEDIA_TYPE_TAXII_V20,
