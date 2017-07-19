@@ -1,9 +1,14 @@
 #!/usr/bin/env python
+from codecs import open
+import os.path
+
 from setuptools import find_packages, setup
+
+# here = os.path.abspath(os.path.dirname(__file__))
 
 
 def get_version():
-    with open('taxii2_client/version.py') as f:
+    with open('taxii2_client/version.py', encoding="utf-8") as f:
         for line in f.readlines():
             if line.startswith("__version__"):
                 version = line.split()[-1].strip('"')
@@ -11,15 +16,36 @@ def get_version():
         raise AttributeError("Package does not have a __version__")
 
 
-install_requires = [
-    'requests',
-]
+# with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+#     long_description = f.read()
 
 setup(
-    name='taxii2_client',
-    description="Provide access to a TAXII server",
+    name='taxii2',
     version=get_version(),
-    packages=find_packages(),
-    install_requires=install_requires,
+    description='TAXII 2 Client Library',
+    # long_description=long_description,
+    url='https://github.com/oasis-open/cti-taxii-client',
+    author='OASIS Cyber Threat Intelligence Technical Committee',
+    author_email='cti-users@lists.oasis-open.org',
+    maintainer='Greg Back',
+    maintainer_email='gback@mitre.org',
+    license='BSD',
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Topic :: Security',
+        'License :: OSI Approved :: BSD License',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+    ],
     keywords="taxii taxii2 json cti cyber threat intelligence",
+    packages=find_packages(),
+    install_requires=[
+        'requests',
+    ],
 )
