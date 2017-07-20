@@ -250,10 +250,12 @@ class ServerInfo(object):
         self._title = response['title']
         self._description = response['description']
         self._contact = response['contact']
-        # TODO: if same URL is in api_roots, re-use the same object
-        self._default = ApiRoot(response['default'], client=self._client)
-        self._api_roots = [ApiRoot(url, client=self._client)
-                           for url in response['api_roots']]
+        roots = response['api_roots']
+        self._api_roots = [ApiRoot(url, client=self._client) for url in roots]
+        # If 'default' is one of the existing API Roots, reuse that object
+        # rather than creating a duplicate. The TAXII 2.0 spec says that the
+        # `default` API Root MUST be an item in `api_roots`.
+        self._default = dict(zip(roots, self._api_roots))[response['default']]
 
         self._loaded = True
 

@@ -84,8 +84,7 @@ def test_server(client):
     assert len(server.api_roots) == 3
     assert server.default is not None
 
-    # TODO: make this work
-    # assert server.api_roots[1] == server.default
+    assert server.api_roots[1] == server.default
 
     api_root = server.api_roots[0]
     assert api_root.url == API_ROOT_URL
