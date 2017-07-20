@@ -148,3 +148,8 @@ def test_collection(client):
     assert coll.can_read is True
     assert coll.can_write is False
     assert coll.media_types == [MEDIA_TYPE_STIX_V20]
+
+
+def test_collection_unexpected_kwarg():
+    with pytest.raises(TypeError):
+        coll = Collection(url="", client=None, foo="bar")

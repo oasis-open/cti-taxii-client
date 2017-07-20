@@ -65,16 +65,17 @@ class Collection(object):
         self._ensure_loaded()
         return self._media_types
 
-    def _populate_fields(self, **kwargs):
-        self._id = kwargs.pop('id', None)
+    def _populate_fields(self, id=None, title=None, description=None,
+                         can_read=None, can_write=None, media_types=None):
+        if media_types is None:
+            media_types = []
+        self._id = id
         # TODO: ensure id doesn't change (or at least matches self.url)
-        self._title = kwargs.pop('title', None)
-        self._description = kwargs.pop('description', None)
-        self._can_read = kwargs.pop('can_read', False)
-        self._can_write = kwargs.pop('can_write', False)
-        self._media_types = kwargs.pop('media_types', [])
-
-        # TODO: Check for unexpected kwargs
+        self._title = title
+        self._description = description
+        self._can_read = can_read
+        self._can_write = can_write
+        self._media_types = media_types
 
     def _ensure_loaded(self):
         if not self._loaded:
