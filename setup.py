@@ -48,4 +48,12 @@ setup(
     install_requires=[
         'requests',
     ],
+    extras_require={
+        'test': [
+            'coverage'.
+            'pytest',
+            'pytest-cov',
+            'responses',
+        ],
+    }
 )
