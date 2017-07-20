@@ -82,7 +82,7 @@ class Collection(object):
             self.refresh()
 
     def refresh(self):
-        response = self._client.get(self.url)
+        response = self._client.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
         self._populate_fields(**response)
 
         self._loaded = True
@@ -169,7 +169,7 @@ class ApiRoot(object):
         self.refresh_collections()
 
     def refresh_information(self):
-        response = self._client.get(self.url)
+        response = self._client.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._title = response['title']
         self._description = response['description']
@@ -180,7 +180,7 @@ class ApiRoot(object):
 
     def refresh_collections(self):
         url = self.url + 'collections/'
-        response = self._client.get(url)  # {"Accept": MEDIA_TYPE_TAXII_V20})
+        response = self._client.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._collections = []
         print(response)
@@ -245,7 +245,7 @@ class ServerInfo(object):
     def refresh(self):
         # TODO: ensure client exists
         url = "https://{}/taxii/".format(self.hostname)
-        response = self._client.get(url)  # {"Accept": MEDIA_TYPE_TAXII_V20})
+        response = self._client.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._title = response['title']
         self._description = response['description']
@@ -264,8 +264,24 @@ class TAXII2Client(object):
         self.session = requests.Session()
         self.session.auth = requests.auth.HTTPBasicAuth(user, password)
 
-    def get(self, url, headers=None, params=None):
-        resp = self.session.get(url, headers=headers, params=params)
+    def get(self, url, accept):
+        """Perform an HTTP GET, using the saved requests.Session and auth info.
+
+        Args:
+            url (str): URL to retrieve
+            accept (str): media type to include in the ``Accept:`` header. This
+                function checks that the ``Content-Type:`` header on the HTTP
+                response matches this media type.
+        """
+        headers = {
+            'Accept': accept
+        }
+        resp = self.session.get(url, headers=headers)
+
+        content_type = resp.headers['Content-Type']
+        if content_type != accept:
+            msg = "Unexpected Response Content-Type: {}"
+            raise ValueError(msg.format(content_type))
         resp.raise_for_status()
         return resp.json()
 

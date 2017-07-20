@@ -73,7 +73,7 @@ def client():
 @responses.activate
 def test_server(client):
     responses.add(responses.GET, DISCOVERY_URL, body=DISCOVERY_RESPONSE,
-                  status=200, content_type='application/json')
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
     server = ServerInfo('example.com', client=client)
 
     assert server._loaded is False
@@ -97,7 +97,7 @@ def test_server(client):
 @responses.activate
 def test_api_root(client):
     responses.add(responses.GET, API_ROOT_URL, API_ROOT_RESPONSE,
-                  status=200, content_type='application/json')
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
 
     api_root = ApiRoot(API_ROOT_URL, client=client)
 
@@ -112,7 +112,7 @@ def test_api_root(client):
 @responses.activate
 def test_api_root_collections(client):
     responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE, status=200,
-                  content_type='application/json')
+                  content_type=MEDIA_TYPE_TAXII_V20)
 
     api_root = ApiRoot(API_ROOT_URL, client=client)
 
@@ -135,7 +135,7 @@ def test_api_root_collections(client):
 @responses.activate
 def test_collection(client):
     responses.add(responses.GET, COLLECTION_URL, COLLECTION_RESPONSE,
-                  status=200, content_type='application/json')
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
 
     coll = Collection(COLLECTION_URL, client=client)
 
