@@ -21,6 +21,19 @@ class Status(object):
 
 
 class Collection(object):
+    """Information about a TAXII Collection.
+
+    This class represents the ``Get a Collection`` endpoint (section 5.2), and
+    contains the information returned in the ``Collection Resource`` (section
+    5.2.1).
+
+    Methods on this class can be used to invoke the following endpoints:
+        - ``Get Objects`` (section 5.3)
+        - ``Add Objects`` (section 5.4)
+        - ``Get an Object`` (section 5.5)
+        - ``Get Object Manifests`` (section 5.6)
+    """
+
     def __init__(self, url, client=None, **kwargs):
         self.url = url
 
@@ -123,6 +136,13 @@ class Collection(object):
 
 
 class ApiRoot(object):
+    """Information about a TAXII API Root.
+
+    This class corresponds to the ``Get API Root Information`` (section 4.2) and
+    ``Get Collections`` (section 5.1) endpoints, and contains the information
+    found in the corresponding ``API Root Resource`` (section 4.2.1) and
+    ``Collections Resource`` (section 5.1.1).
+    """
 
     def __init__(self, url, client=None):
         self.url = url
@@ -165,10 +185,15 @@ class ApiRoot(object):
             self.refresh_information()
 
     def refresh():
+        """Update the API Root's information and list of Collections"""
         self.refresh_information()
         self.refresh_collections()
 
     def refresh_information(self):
+        """Update the properties of this API Root.
+
+        This invokes the ``Get API Root Information`` endpoint.
+        """
         response = self._client.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._title = response['title']
@@ -179,6 +204,10 @@ class ApiRoot(object):
         self._loaded_information = True
 
     def refresh_collections(self):
+        """Update the list of Collections contained by this API Root.
+
+        This invokes the ``Get Collections`` endpoint.
+        """
         url = self.url + 'collections/'
         response = self._client.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
@@ -206,6 +235,11 @@ class ApiRoot(object):
 
 
 class ServerDiscovery(object):
+    """Information about a server hosting a Discovery service.
+
+    This class corresponds to the Server Discovery endpoint (section 4.1) and
+    the Discovery Resource returned from that endpoint (section 4.1.1).
+    """
 
     def __init__(self, hostname, client=None):
         self.hostname = hostname
