@@ -183,7 +183,7 @@ class ApiRoot(object):
         if not self._loaded_information:
             self.refresh_information()
 
-    def refresh():
+    def refresh(self):
         """Update the API Root's information and list of Collections"""
         self.refresh_information()
         self.refresh_collections()
@@ -321,7 +321,7 @@ class TAXII2Client(object):
         resp.raise_for_status()
         return resp.json()
 
-    def post(self, url, headers=None, param=None, json=None):
+    def post(self, url, headers=None, params=None, json=None):
         resp = self.session.post(url, headers=headers, params=params, json=json)
         resp.raise_for_status()
         return resp.json()

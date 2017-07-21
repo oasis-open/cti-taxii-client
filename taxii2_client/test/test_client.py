@@ -1,9 +1,8 @@
 import pytest
 import responses
-import requests
 
-from taxii2_client import (Collection, ApiRoot, ServerDiscovery, TAXII2Client,
-                           MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20)
+from taxii2_client import (MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, ApiRoot,
+                           Collection, ServerDiscovery, TAXII2Client)
 
 TAXII_SERVER = 'example.com'
 DISCOVERY_URL = 'https://{}/taxii/'.format(TAXII_SERVER)
@@ -221,7 +220,7 @@ def test_collection(collection):
 
 def test_collection_unexpected_kwarg():
     with pytest.raises(TypeError):
-        coll = Collection(url="", client=None, foo="bar")
+        Collection(url="", client=None, foo="bar")
 
 
 @responses.activate

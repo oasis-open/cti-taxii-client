@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from codecs import open
-import os.path
 
 from setuptools import find_packages, setup
 
+# import os.path
 # here = os.path.abspath(os.path.dirname(__file__))
 
 
