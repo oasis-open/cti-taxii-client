@@ -77,6 +77,18 @@ def server(client):
     return ServerDiscovery('example.com', client=client)
 
 
+@pytest.fixture
+def api_root(client):
+    """Default API Root object"""
+    return ApiRoot(API_ROOT_URL, client=client)
+
+
+@pytest.fixture
+def collection(client):
+    """Default Collection object"""
+    return Collection(COLLECTION_URL, client=client)
+
+
 def set_discovery_response(response):
     responses.add(responses.GET, DISCOVERY_URL, body=response, status=200,
                   content_type=MEDIA_TYPE_TAXII_V20)
@@ -134,11 +146,9 @@ def test_discovery_with_no_default(server):
 
 
 @responses.activate
-def test_api_root(client):
+def test_api_root(api_root):
     responses.add(responses.GET, API_ROOT_URL, API_ROOT_RESPONSE,
                   status=200, content_type=MEDIA_TYPE_TAXII_V20)
-
-    api_root = ApiRoot(API_ROOT_URL, client=client)
 
     assert api_root._loaded_information is False
     assert api_root.title == "Malware Research Group"
@@ -149,11 +159,9 @@ def test_api_root(client):
 
 
 @responses.activate
-def test_api_root_collections(client):
+def test_api_root_collections(api_root):
     responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE, status=200,
                   content_type=MEDIA_TYPE_TAXII_V20)
-
-    api_root = ApiRoot(API_ROOT_URL, client=client)
 
     assert api_root._loaded_collections is False
     assert len(api_root.collections) == 2
@@ -172,21 +180,19 @@ def test_api_root_collections(client):
 
 
 @responses.activate
-def test_collection(client):
+def test_collection(collection):
     responses.add(responses.GET, COLLECTION_URL, COLLECTION_RESPONSE,
                   status=200, content_type=MEDIA_TYPE_TAXII_V20)
 
-    coll = Collection(COLLECTION_URL, client=client)
-
-    assert coll._loaded is False
-    assert coll.id == '91a7b528-80eb-42ed-a74d-c6fbd5a26116'
-    assert coll._loaded is True
-    assert coll.url == COLLECTION_URL
-    assert coll.title == "High Value Indicator Collection"
-    assert coll.description == "This data collection is for collecting high value IOCs"
-    assert coll.can_read is True
-    assert coll.can_write is False
-    assert coll.media_types == [MEDIA_TYPE_STIX_V20]
+    assert collection._loaded is False
+    assert collection.id == '91a7b528-80eb-42ed-a74d-c6fbd5a26116'
+    assert collection._loaded is True
+    assert collection.url == COLLECTION_URL
+    assert collection.title == "High Value Indicator Collection"
+    assert collection.description == "This data collection is for collecting high value IOCs"
+    assert collection.can_read is True
+    assert collection.can_write is False
+    assert collection.media_types == [MEDIA_TYPE_STIX_V20]
 
 
 def test_collection_unexpected_kwarg():
