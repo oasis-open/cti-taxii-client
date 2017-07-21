@@ -50,7 +50,7 @@ setup(
     ],
     extras_require={
         'test': [
-            'coverage'.
+            'coverage',
             'pytest',
             'pytest-cov',
             'responses',
