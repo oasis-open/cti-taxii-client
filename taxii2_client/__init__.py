@@ -100,6 +100,14 @@ class Collection(object):
 
         self._loaded = True
 
+    def get_objects(self, filters=None):
+        """Implement the ``Get Objects`` endpoint (section 5.3)"""
+        # TODO: add filters
+        if not self.can_read:
+            raise ValueError("Collection {} does not allow reading".format(self.url))
+        url = self.url + "objects/"
+        return self._client.get(url, accept=MEDIA_TYPE_STIX_V20)
+
     # TODO: update this function
     def get_object(self, obj_id):
         if not self.can_read:
@@ -107,15 +115,6 @@ class Collection(object):
         return self.taxii_client.send_request("get",
                                               "/".join([self.api_root.url, "collections", self.id_, "objects", obj_id]),
                                               {"Accept": MEDIA_TYPE_STIX_V20})
-
-    # TODO: update this function
-    def get_objects(self, filters=None):
-        if not self.can_read:
-            raise ValueError("Collection %s of %s does not allow reading" % (self.id_, self.api_root.uri))
-        return self.taxii_client.send_request("get",
-                                              "/".join([self.api_root.url, "collections", self.id_, "objects"]),
-                                              {"Accept": MEDIA_TYPE_STIX_V20},
-                                              params=filters)
 
     # TODO: update this function
     def add_objects(self, bundle):

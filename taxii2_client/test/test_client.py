@@ -10,6 +10,11 @@ DISCOVERY_URL = 'https://{}/taxii/'.format(TAXII_SERVER)
 API_ROOT_URL = 'https://{}/api1/'.format(TAXII_SERVER)
 COLLECTIONS_URL = API_ROOT_URL + 'collections/'
 COLLECTION_URL = COLLECTIONS_URL + '91a7b528-80eb-42ed-a74d-c6fbd5a26116/'
+OBJECTS_URL = COLLECTION_URL + 'objects/'
+GET_OBJECTS_URL = OBJECTS_URL
+ADD_OBJECTS_URL = OBJECTS_URL
+GET_OBJECT_URL = OBJECTS_URL + 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61/'
+MANIFEST_URL = COLLECTION_URL + 'manifest/'
 
 # These responses are provided as examples in the TAXII 2.0 specification.
 DISCOVERY_RESPONSE = """{
@@ -63,6 +68,21 @@ COLLECTION_RESPONSE = """{
     "application/vnd.oasis.stix+json; version=2.0"
   ]
 }"""
+GET_OBJECTS_RESPONSE = """{
+  "type": "bundle",
+  "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+  "spec_version": "2.0",
+  "objects": [
+    {
+      "type": "indicator",
+      "id": "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
+      "created": "2016-04-06T20:03:48.000Z",
+      "modified": "2016-04-06T20:03:48.000Z",
+      "pattern": "[ file:hashes.MD5 = 'd41d8cd98f00b204e9800998ecf8427e' ]",
+      "valid_from": "2016-01-01T00:00:00Z"
+    }
+  ]
+}"""
 
 
 @pytest.fixture
@@ -91,6 +111,11 @@ def collection(client):
 
 def set_discovery_response(response):
     responses.add(responses.GET, DISCOVERY_URL, body=response, status=200,
+                  content_type=MEDIA_TYPE_TAXII_V20)
+
+
+def set_collection_response(response=COLLECTION_RESPONSE):
+    responses.add(responses.GET, COLLECTION_URL, response, status=200,
                   content_type=MEDIA_TYPE_TAXII_V20)
 
 
@@ -181,8 +206,7 @@ def test_api_root_collections(api_root):
 
 @responses.activate
 def test_collection(collection):
-    responses.add(responses.GET, COLLECTION_URL, COLLECTION_RESPONSE,
-                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+    set_collection_response()
 
     assert collection._loaded is False
     assert collection.id == '91a7b528-80eb-42ed-a74d-c6fbd5a26116'
@@ -198,3 +222,16 @@ def test_collection(collection):
 def test_collection_unexpected_kwarg():
     with pytest.raises(TypeError):
         coll = Collection(url="", client=None, foo="bar")
+
+
+@responses.activate
+def test_get_collection_objects(collection):
+    # The Collection Response needs to be set to get the Collection information.
+    set_collection_response()
+    responses.add(responses.GET, GET_OBJECTS_URL, GET_OBJECTS_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+
+    response = collection.get_objects()
+
+    assert response['spec_version'] == '2.0'
+    assert response['objects'][0]['id'] == 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61'
