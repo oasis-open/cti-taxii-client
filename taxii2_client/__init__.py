@@ -205,7 +205,7 @@ class ApiRoot(object):
         return Status(**info)
 
 
-class ServerInfo(object):
+class ServerDiscovery(object):
 
     def __init__(self, hostname, client=None):
         self.hostname = hostname

@@ -2,7 +2,7 @@ import pytest
 import responses
 import requests
 
-from taxii2_client import (Collection, ApiRoot, ServerInfo, TAXII2Client,
+from taxii2_client import (Collection, ApiRoot, ServerDiscovery, TAXII2Client,
                            MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20)
 
 TAXII_SERVER = 'example.com'
@@ -11,7 +11,7 @@ API_ROOT_URL = 'https://{}/api1/'.format(TAXII_SERVER)
 COLLECTIONS_URL = API_ROOT_URL + 'collections/'
 COLLECTION_URL = COLLECTIONS_URL + '91a7b528-80eb-42ed-a74d-c6fbd5a26116/'
 
-
+# These responses are provided as examples in the TAXII 2.0 specification.
 DISCOVERY_RESPONSE = """{
   "title": "Some TAXII Server",
   "description": "This TAXII Server contains a listing of...",
@@ -67,14 +67,24 @@ COLLECTION_RESPONSE = """{
 
 @pytest.fixture
 def client():
+    """TAXII Client with no authentication."""
     return TAXII2Client(None, None)
 
 
+@pytest.fixture
+def server(client):
+    """Default ServerDiscovery object for example.com"""
+    return ServerDiscovery('example.com', client=client)
+
+
+def set_discovery_response(response):
+    responses.add(responses.GET, DISCOVERY_URL, body=response, status=200,
+                  content_type=MEDIA_TYPE_TAXII_V20)
+
+
 @responses.activate
-def test_server(client):
-    responses.add(responses.GET, DISCOVERY_URL, body=DISCOVERY_RESPONSE,
-                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
-    server = ServerInfo('example.com', client=client)
+def test_server_discovery(server):
+    set_discovery_response(DISCOVERY_RESPONSE)
 
     assert server._loaded is False
     assert server.title == "Some TAXII Server"
@@ -94,12 +104,9 @@ def test_server(client):
 
 
 @responses.activate
-def test_minimal_server_response(client):
-    # `title` is the only required field on a Discove
-    response = '{"title": "Some TAXII Server"}'
-    responses.add(responses.GET, DISCOVERY_URL, body=response,
-                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
-    server = ServerInfo('example.com', client=client)
+def test_minimal_discovery_response(server):
+    # `title` is the only required field on a Discovery Response
+    set_discovery_response('{"title": "Some TAXII Server"}')
 
     assert server.title == "Some TAXII Server"
     assert server.description is None
@@ -109,7 +116,7 @@ def test_minimal_server_response(client):
 
 
 @responses.activate
-def test_server_with_no_default(client):
+def test_discovery_with_no_default(server):
     response = """{
       "title": "Some TAXII Server",
       "description": "This TAXII Server contains a listing of...",
@@ -120,9 +127,7 @@ def test_server_with_no_default(client):
         "https://example.net/trustgroup1/"
       ]
     }"""
-    responses.add(responses.GET, DISCOVERY_URL, body=response,
-                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
-    server = ServerInfo('example.com', client=client)
+    set_discovery_response(response)
 
     assert len(server.api_roots) == 3
     assert server.default is None
