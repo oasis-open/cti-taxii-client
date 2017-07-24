@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 from codecs import open
+import os.path
 
 from setuptools import find_packages, setup
 
-# import os.path
-# here = os.path.abspath(os.path.dirname(__file__))
+here = os.path.abspath(os.path.dirname(__file__))
 
 
 def get_version():
@@ -16,14 +16,15 @@ def get_version():
         raise AttributeError("Package does not have a __version__")
 
 
-# with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
-#     long_description = f.read()
+with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
+
 
 setup(
     name='taxii2',
     version=get_version(),
     description='TAXII 2 Client Library',
-    # long_description=long_description,
+    long_description=long_description,
     url='https://github.com/oasis-open/cti-taxii-client',
     author='OASIS Cyber Threat Intelligence Technical Committee',
     author_email='cti-users@lists.oasis-open.org',
