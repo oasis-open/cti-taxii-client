@@ -24,6 +24,8 @@ The easiest way to install the TAXII client is with pip:
 ::
 
   $ pip install taxii2_client
+  
+*The cti-taxii-client is not currently available on pip.*
 
 `Usage`
 =======
