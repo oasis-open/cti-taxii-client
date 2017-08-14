@@ -2,7 +2,7 @@ import pytest
 import responses
 
 from taxii2_client import (MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, ApiRoot,
-                           Collection, ServerDiscovery, TAXII2Client)
+                           Collection, Server)
 
 TAXII_SERVER = 'example.com'
 DISCOVERY_URL = 'https://{}/taxii/'.format(TAXII_SERVER)
@@ -85,27 +85,21 @@ GET_OBJECTS_RESPONSE = """{
 
 
 @pytest.fixture
-def client():
-    """TAXII Client with no authentication."""
-    return TAXII2Client(None, None)
+def server():
+    """Default server object for example.com"""
+    return Server(DISCOVERY_URL)
 
 
 @pytest.fixture
-def server(client):
-    """Default ServerDiscovery object for example.com"""
-    return ServerDiscovery('example.com', client=client)
-
-
-@pytest.fixture
-def api_root(client):
+def api_root():
     """Default API Root object"""
-    return ApiRoot(API_ROOT_URL, client=client)
+    return ApiRoot(API_ROOT_URL)
 
 
 @pytest.fixture
-def collection(client):
+def collection():
     """Default Collection object"""
-    return Collection(COLLECTION_URL, client=client)
+    return Collection(COLLECTION_URL)
 
 
 def set_discovery_response(response):
@@ -134,9 +128,8 @@ def test_server_discovery(server):
 
     api_root = server.api_roots[0]
     assert api_root.url == API_ROOT_URL
-    # The URL is populated based on the discovery response, so the rest of the
-    # information is not loaded yet.
     assert api_root._loaded_information is False
+    assert api_root._loaded_collections is False
 
 
 @responses.activate
@@ -220,7 +213,7 @@ def test_collection(collection):
 
 def test_collection_unexpected_kwarg():
     with pytest.raises(TypeError):
-        Collection(url="", client=None, foo="bar")
+        Collection(url="", conn=None, foo="bar")
 
 
 @responses.activate
