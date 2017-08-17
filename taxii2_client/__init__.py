@@ -183,6 +183,14 @@ class Collection(_TAXIIEndpoint):
         if not self._loaded:
             self.refresh()
 
+    def _verify_can_read(self):
+        if not self.can_read:
+            raise AccessError(u"Collection '%s' does not allow reading." % self.url)
+
+    def _verify_can_write(self):
+        if not self.can_write:
+            raise AccessError(u"Collection '%s' does not allow writing." % self.url)
+
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
         self._populate_fields(**response)
@@ -192,16 +200,12 @@ class Collection(_TAXIIEndpoint):
     def get_objects(self, filters=None):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         # TODO: add filters
-        if not self.can_read:
-            raise AccessError(u"Collection '%s' does not allow reading." % self.url)
-
+        self._verify_can_read()
         return self._conn.get(self.objects_url, accept=MEDIA_TYPE_STIX_V20)
 
     def get_object(self, obj_id):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
-        if not self.can_read:
-            raise AccessError(u"Collection '%s' does not allow reading." % self.url)
-
+        self._verify_can_read()
         url = self.objects_url + str(obj_id) + '/'
         return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
 
@@ -235,9 +239,7 @@ class Collection(_TAXIIEndpoint):
             a Status object corresponding to the most recent data obtained
             before the timeout, is returned.
         """
-        if not self.can_write:
-            raise AccessError(u"Collection '%s' does not allow writing." % self.url)
-
+        self._verify_can_write()
         headers = {
             u"Accept": MEDIA_TYPE_TAXII_V20,
             u"Content-Type": MEDIA_TYPE_STIX_V20,
@@ -266,7 +268,7 @@ class Collection(_TAXIIEndpoint):
     def get_manifest(self, filters=None):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         # TODO: add filters
-        # TODO: should we verify 'can_read'?
+        self._verify_can_read()
         return self._conn.get(self.url + 'manifest/',
                               accept=MEDIA_TYPE_TAXII_V20)
 
