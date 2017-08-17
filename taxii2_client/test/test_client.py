@@ -14,6 +14,8 @@ GET_OBJECTS_URL = OBJECTS_URL
 ADD_OBJECTS_URL = OBJECTS_URL
 GET_OBJECT_URL = OBJECTS_URL + 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61/'
 MANIFEST_URL = COLLECTION_URL + 'manifest/'
+STATUS_ID = '2d086da7-4bdc-4f91-900e-d77486753710'
+STATUS_URL = API_ROOT_URL + 'status/' + STATUS_ID + '/'
 
 # These responses are provided as examples in the TAXII 2.0 specification.
 DISCOVERY_RESPONSE = """{
@@ -148,6 +150,29 @@ GET_MANIFEST_RESPONSE = """{
       "versions": ["2016-11-03T12:30:59.000Z"],
       "media_types": ["application/vnd.oasis.stix+json; version=2.0"]
     }
+  ]
+}"""
+
+STATUS_RESPONSE = """{
+  "id": "2d086da7-4bdc-4f91-900e-d77486753710",
+  "status": "pending",
+  "request_timestamp": "2016-11-02T12:34:34.12345Z",
+  "total_count": 4,
+  "success_count": 1,
+  "successes": [
+    "indicator--c410e480-e42b-47d1-9476-85307c12bcbf"
+  ],
+  "failure_count": 1,
+  "failures": [
+    {
+      "id": "malware--664fa29d-bf65-4f28-a667-bdb76f29ec98",
+      "message": "Unable to process object"
+    }
+  ],
+  "pending_count": 2,
+  "pendings": [
+    "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
+    "relationship--045585ad-a22f-4333-af33-bfd503a683b5"
   ]
 }"""
 
@@ -351,3 +376,19 @@ def test_get_manifest(collection):
     assert obj['id'] == 'indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b'
     assert len(obj['versions']) == 2
     assert obj['media_types'][0] == MEDIA_TYPE_STIX_V20
+
+
+@responses.activate
+def test_get_status(api_root):
+    responses.add(responses.GET, STATUS_URL, STATUS_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+
+    status = api_root.get_status(STATUS_ID)
+
+    assert status.total_count == 4
+    assert status.success_count == 1
+    assert len(status.successes) == 1
+    assert status.failure_count == 1
+    assert len(status.failures) == 1
+    assert status.pending_count == 2
+    assert len(status.pendings) == 2

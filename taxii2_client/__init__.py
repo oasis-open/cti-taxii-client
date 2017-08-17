@@ -50,10 +50,31 @@ class _TAXIIEndpoint(object):
         return False
 
 
-# TODO: Should this object allow refreshing itself (have its own URL?)
-class Status(object):
-    def __init__(self, id, status, total_count, success_count, failure_count, pending_count, request_timestamp=None,
-                 successes=None, failures=None, pendings=None):
+class Status(_TAXIIEndpoint):
+    """TAXII Status Resource"""
+    # We don't need to jump through the same lazy-load as with Collection, since
+    # it's *far* less likely people will create these manually rather than
+    # just getting them returned from Collection.add_objects(), and there aren't
+    # other endpoints to call on the Status object.
+
+    def __init__(self, url, user=None, password=None, conn=None, **kwargs):
+        super(Status, self).__init__(url, user, password, conn)
+        if kwargs:
+            self._populate_fields(**kwargs)
+        else:
+            self.refresh()
+
+    def __nonzero__(self):
+        return self.status == u"complete"
+    __bool__ = __nonzero__
+
+    def refresh(self):
+        response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
+        self._populate_fields(**response)
+
+    def _populate_fields(self, id, status, total_count, success_count,
+                         failure_count, pending_count, request_timestamp=None,
+                         successes=None, failures=None, pendings=None):
         self.id = id
         self.status = status
         self.total_count = total_count
@@ -64,10 +85,6 @@ class Status(object):
         self.successes = successes or []
         self.failures = failures or []
         self.pendings = pendings or []
-
-    def __nonzero__(self):
-        return self.status == u"complete"
-    __bool__ = __nonzero__
 
 
 class Collection(_TAXIIEndpoint):
@@ -227,21 +244,24 @@ class Collection(_TAXIIEndpoint):
         }
         status_json = self._conn.post(self.objects_url, headers=headers, json=bundle)
 
-        if not wait_for_completion or status_json[u"status"] == u"complete":
-            return Status(**status_json)
-
         status_url = urlparse.urljoin(self.url, u"../../status/{}".format(
             status_json[u"id"]))
 
+        status = Status(url=status_url, conn=self._conn, **status_json)
+
+        if not wait_for_completion or status.status == u"complete":
+            return status
+
+        # TODO: consider moving this to a "Status.wait_until_final()" function.
         start_time = time.time()
         elapsed = 0
-        while status_json[u"status"] != u"complete" and \
+        while status.status != u"complete" and \
                 (timeout <= 0 or elapsed < timeout):
             time.sleep(poll_interval)
-            status_json = self._conn.get(status_url, MEDIA_TYPE_TAXII_V20)
+            status.refresh()
             elapsed = time.time() - start_time
 
-        return Status(**status_json)
+        return status
 
     def get_manifest(self, filters=None):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
@@ -340,11 +360,10 @@ class ApiRoot(_TAXIIEndpoint):
 
         self._loaded_collections = True
 
-    # TODO: update this function
-    def get_status(self, id):
-        info = self._conn.get("/".join([self.url, "status", id]),
-                              {"Accept": MEDIA_TYPE_TAXII_V20})
-        return Status(**info)
+    def get_status(self, status_id):
+        status_url = self.url + "status/" + status_id + "/"
+        info = self._conn.get(status_url, accept=MEDIA_TYPE_TAXII_V20)
+        return Status(status_url, conn=self._conn, **info)
 
 
 class Server(_TAXIIEndpoint):
