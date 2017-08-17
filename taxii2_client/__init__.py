@@ -54,7 +54,7 @@ class _TAXIIEndpoint(object):
 class Status(object):
     def __init__(self, id, status, total_count, success_count, failure_count, pending_count, request_timestamp=None,
                  successes=None, failures=None, pendings=None):
-        self.id_ = id
+        self.id = id
         self.status = status
         self.total_count = total_count
         self.success_count = success_count
@@ -341,8 +341,8 @@ class ApiRoot(_TAXIIEndpoint):
         self._loaded_collections = True
 
     # TODO: update this function
-    def get_status(self, id_):
-        info = self._conn.get("/".join([self.url, "status", id_]),
+    def get_status(self, id):
+        info = self._conn.get("/".join([self.url, "status", id]),
                               {"Accept": MEDIA_TYPE_TAXII_V20})
         return Status(**info)
 
@@ -479,10 +479,10 @@ class _HTTPConnection(object):
         self.session.close()
 
 
-def get_collection_by_id(api_root, id_):
-    for c in api_root.collections:
-        if c.id == id_:
-            return c
+def get_collection_by_id(api_root, coll_id):
+    for collection in api_root.collections:
+        if collection.id == coll_id:
+            return collection
 
     return None
 
