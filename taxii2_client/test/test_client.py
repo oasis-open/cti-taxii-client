@@ -1,8 +1,8 @@
 import pytest
 import responses
 
-from taxii2_client import (MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, ApiRoot,
-                           Collection, Server)
+from taxii2_client import (MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20,
+                           AccessError, ApiRoot, Collection, Server)
 
 TAXII_SERVER = 'example.com'
 DISCOVERY_URL = 'https://{}/taxii/'.format(TAXII_SERVER)
@@ -67,7 +67,22 @@ COLLECTION_RESPONSE = """{
     "application/vnd.oasis.stix+json; version=2.0"
   ]
 }"""
-GET_OBJECTS_RESPONSE = """{
+
+# This collection is not in the spec.
+WRITABLE_COLLECTION = """{
+  "id": "e278b87e-0f9b-4c63-a34c-c8f0b3e91acb",
+  "title": "Writable Collection",
+  "description": "This collection is a dropbox for submitting indicators",
+  "can_read": false,
+  "can_write": true,
+  "media_types": [
+    "application/vnd.oasis.stix+json; version=2.0"
+  ]
+}"""
+
+# This bundle is used as the response to get_objects(), and also the bundle
+# POST'ed with add_objects().
+STIX_BUNDLE = """{
   "type": "bundle",
   "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
   "spec_version": "2.0",
@@ -81,6 +96,38 @@ GET_OBJECTS_RESPONSE = """{
       "valid_from": "2016-01-01T00:00:00Z"
     }
   ]
+}"""
+GET_OBJECTS_RESPONSE = STIX_BUNDLE
+
+# This is the expected response when calling ADD_OBJECTS with the STIX_BUNDLE
+# above. There is only one object, and it was added successfully. This response
+# is not in the spec.
+ADD_OBJECTS_RESPONSE = """{
+  "id": "350dae03-d2d8-4bd3-bc1d-8160589693e3",
+  "status": "complete",
+  "request_timestamp": "2016-11-02T12:34:34.12345Z",
+  "total_count": 1,
+  "success_count": 1,
+  "successes": [
+    "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
+  ],
+  "failure_count": 0,
+  "pending_count": 0
+}"""
+
+# This is the response in Section 5.4 of the spec. It implies a larger
+# bundle than what is provided in the example.
+ADD_OBJECTS_RESPONSE_FROM_SPEC = """{
+  "id": "2d086da7-4bdc-4f91-900e-d77486753710",
+  "status": "pending",
+  "request_timestamp": "2016-11-02T12:34:34.12345Z",
+  "total_count": 4,
+  "success_count": 1,
+  "successes": [
+    "indicator--c410e480-e42b-47d1-9476-85307c12bcbf"
+  ],
+  "failure_count": 0,
+  "pending_count": 3
 }"""
 
 
@@ -99,6 +146,15 @@ def api_root():
 @pytest.fixture
 def collection():
     """Default Collection object"""
+    # The collection response is needed to get information about the collection
+    set_collection_response()
+    return Collection(COLLECTION_URL)
+
+
+@pytest.fixture
+def writable_collection():
+    """Collection with 'can_write' set to 'true'."""
+    set_collection_response(WRITABLE_COLLECTION)
     return Collection(COLLECTION_URL)
 
 
@@ -198,8 +254,6 @@ def test_api_root_collections(api_root):
 
 @responses.activate
 def test_collection(collection):
-    set_collection_response()
-
     assert collection._loaded is False
     assert collection.id == '91a7b528-80eb-42ed-a74d-c6fbd5a26116'
     assert collection._loaded is True
@@ -218,8 +272,6 @@ def test_collection_unexpected_kwarg():
 
 @responses.activate
 def test_get_collection_objects(collection):
-    # The Collection Response needs to be set to get the Collection information.
-    set_collection_response()
     responses.add(responses.GET, GET_OBJECTS_URL, GET_OBJECTS_RESPONSE,
                   status=200, content_type=MEDIA_TYPE_STIX_V20)
 
@@ -227,3 +279,24 @@ def test_get_collection_objects(collection):
 
     assert response['spec_version'] == '2.0'
     assert response['objects'][0]['id'] == 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61'
+
+
+@responses.activate
+def test_cannot_write_to_readonly_collection(collection):
+    with pytest.raises(AccessError):
+        collection.add_objects(STIX_BUNDLE)
+
+
+@responses.activate
+def test_add_object_to_collection(writable_collection):
+    responses.add(responses.POST, ADD_OBJECTS_URL, ADD_OBJECTS_RESPONSE,
+                  status=202, content_type=MEDIA_TYPE_TAXII_V20)
+
+    status = writable_collection.add_objects(STIX_BUNDLE)
+
+    assert status.status == 'complete'
+    assert status.total_count == 1
+    assert status.success_count == 1
+    assert len(status.successes) == 1
+    assert status.failure_count == 0
+    assert status.pending_count == 0

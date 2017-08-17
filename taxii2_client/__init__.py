@@ -9,7 +9,7 @@ MEDIA_TYPE_TAXII_V20 = "application/vnd.oasis.taxii+json; version=2.0"
 class TAXIIServiceException(Exception):
     """Base class for exceptions raised by this library."""
     def __init__(self, *args):
-        super(TAXIIServiceException, self).__init__(args)
+        super(TAXIIServiceException, self).__init__(*args)
 
 
 class InvalidArgumentsError(TAXIIServiceException):
@@ -63,6 +63,10 @@ class Status(object):
         self.success_count = success_count
         self.failure_count = failure_count
         self.pending_count = pending_count
+        # TODO: validate that len(successes) == success_count, etc.
+        self.successes = successes or []
+        self.failures = failures or []
+        self.pendings = pendings or []
 
     def __nonzero__(self):
         return self.status == u"complete"
@@ -180,7 +184,7 @@ class Collection(_TAXIIEndpoint):
     def get_object(self, obj_id):
         if not self.can_read:
             raise AccessError("Collection %s of %s does not allow reading" %
-                             (self.id_, self.api_root.uri))
+                              (self.id_, self.api_root.uri))
         return self._conn.get("/".join([self.api_root.url, "collections", self.id_, "objects", obj_id]),
                               MEDIA_TYPE_STIX_V20)
 
@@ -214,15 +218,14 @@ class Collection(_TAXIIEndpoint):
             before the timeout, is returned.
         """
         if not self.can_write:
-            raise AccessError(u"Collection %s of %s does not allow writing" %
-                             (self.id_, self.api_root.uri))
+            raise AccessError(u"Collection '%s' does not allow writing." % self.url)
 
-        add_url = urlparse.urljoin(self.url, "objects/")
-
-        status_json = self._conn.post(add_url,
-            headers={u"Accept": MEDIA_TYPE_TAXII_V20,
-                     u"Content-Type": MEDIA_TYPE_STIX_V20},
-            json=bundle)
+        url = urlparse.urljoin(self.url, "objects/")
+        headers = {
+            u"Accept": MEDIA_TYPE_TAXII_V20,
+            u"Content-Type": MEDIA_TYPE_STIX_V20,
+        }
+        status_json = self._conn.post(url, headers=headers, json=bundle)
 
         if not wait_for_completion or status_json[u"status"] == u"complete":
             return Status(**status_json)
