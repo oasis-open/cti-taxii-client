@@ -300,3 +300,9 @@ def test_add_object_to_collection(writable_collection):
     assert len(status.successes) == 1
     assert status.failure_count == 0
     assert status.pending_count == 0
+
+
+@responses.activate
+def test_cannot_read_from_writeonly_collection(writable_collection):
+    with pytest.raises(AccessError):
+        writable_collection.get_objects()

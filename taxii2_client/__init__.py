@@ -172,16 +172,14 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         # TODO: add filters
         if not self.can_read:
-            raise AccessError("Collection {} does not allow reading".format(
-                self.url))
+            raise AccessError(u"Collection '%s' does not allow reading." % self.url)
         url = self.url + "objects/"
         return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
 
     # TODO: update this function
     def get_object(self, obj_id):
         if not self.can_read:
-            raise AccessError("Collection %s of %s does not allow reading" %
-                              (self.id_, self.api_root.uri))
+            raise AccessError(u"Collection '%s' does not allow reading." % self.url)
         return self._conn.get("/".join([self.api_root.url, "collections", self.id_, "objects", obj_id]),
                               MEDIA_TYPE_STIX_V20)
 
