@@ -181,6 +181,7 @@ class Collection(_TAXIIEndpoint):
         return self._conn.get(self.objects_url, accept=MEDIA_TYPE_STIX_V20)
 
     def get_object(self, obj_id):
+        """Implement the ``Get an Object`` endpoint (section 5.5)"""
         if not self.can_read:
             raise AccessError(u"Collection '%s' does not allow reading." % self.url)
 
@@ -189,7 +190,8 @@ class Collection(_TAXIIEndpoint):
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
                     timeout=60):
-        """
+        """Implement the ``Add Objects`` endpoint (sectdion 5.4)
+
         Add objects to the collection.  This may be performed either
         synchronously or asynchronously.  To add asynchronously, set
         wait_for_completion to False.  If False, the latter two args are
@@ -241,10 +243,12 @@ class Collection(_TAXIIEndpoint):
 
         return Status(**status_json)
 
-    # TODO: update this function
     def get_manifest(self, filters=None):
-        return self._conn.get("/".join([self.api_root.url, "collections", self.id_, "manifest"]),
-                              MEDIA_TYPE_TAXII_V20)
+        """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
+        # TODO: add filters
+        # TODO: should we verify 'can_read'?
+        return self._conn.get(self.url + 'manifest/',
+                              accept=MEDIA_TYPE_TAXII_V20)
 
 
 class ApiRoot(_TAXIIEndpoint):

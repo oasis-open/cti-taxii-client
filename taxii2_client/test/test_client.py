@@ -134,6 +134,24 @@ ADD_OBJECTS_RESPONSE_FROM_SPEC = """{
 }"""
 
 
+GET_MANIFEST_RESPONSE = """{
+  "objects": [
+    {
+      "id": "indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b",
+      "date_added": "2016-11-01T03:04:05Z",
+      "versions": ["2016-11-03T12:30:59.000Z","2016-12-03T12:30:59.000Z"],
+      "media_types": ["application/vnd.oasis.stix+json; version=2.0"]
+    },
+    {
+      "id": "indicator--ef0b28e1-308c-4a30-8770-9b4851b260a5",
+      "date_added": "2016-11-01T10:29:05Z",
+      "versions": ["2016-11-03T12:30:59.000Z"],
+      "media_types": ["application/vnd.oasis.stix+json; version=2.0"]
+    }
+  ]
+}"""
+
+
 @pytest.fixture
 def server():
     """Default server object for example.com"""
@@ -319,3 +337,17 @@ def test_add_object_to_collection(writable_collection):
 def test_cannot_read_from_writeonly_collection(writable_collection):
     with pytest.raises(AccessError):
         writable_collection.get_objects()
+
+
+@responses.activate
+def test_get_manifest(collection):
+    responses.add(responses.GET, MANIFEST_URL, GET_MANIFEST_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+
+    response = collection.get_manifest()
+
+    assert len(response['objects']) == 2
+    obj = response['objects'][0]
+    assert obj['id'] == 'indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b'
+    assert len(obj['versions']) == 2
+    assert obj['media_types'][0] == MEDIA_TYPE_STIX_V20
