@@ -146,6 +146,10 @@ class Collection(_TAXIIEndpoint):
         self._ensure_loaded()
         return self._media_types
 
+    @property
+    def objects_url(self):
+        return self.url + 'objects/'
+
     def _populate_fields(self, id=None, title=None, description=None,
                          can_read=None, can_write=None, media_types=None):
         if media_types is None:
@@ -173,15 +177,15 @@ class Collection(_TAXIIEndpoint):
         # TODO: add filters
         if not self.can_read:
             raise AccessError(u"Collection '%s' does not allow reading." % self.url)
-        url = self.url + "objects/"
-        return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
 
-    # TODO: update this function
+        return self._conn.get(self.objects_url, accept=MEDIA_TYPE_STIX_V20)
+
     def get_object(self, obj_id):
         if not self.can_read:
             raise AccessError(u"Collection '%s' does not allow reading." % self.url)
-        return self._conn.get("/".join([self.api_root.url, "collections", self.id_, "objects", obj_id]),
-                              MEDIA_TYPE_STIX_V20)
+
+        url = self.objects_url + str(obj_id) + '/'
+        return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
                     timeout=60):
@@ -215,12 +219,11 @@ class Collection(_TAXIIEndpoint):
         if not self.can_write:
             raise AccessError(u"Collection '%s' does not allow writing." % self.url)
 
-        url = urlparse.urljoin(self.url, "objects/")
         headers = {
             u"Accept": MEDIA_TYPE_TAXII_V20,
             u"Content-Type": MEDIA_TYPE_STIX_V20,
         }
-        status_json = self._conn.post(url, headers=headers, json=bundle)
+        status_json = self._conn.post(self.objects_url, headers=headers, json=bundle)
 
         if not wait_for_completion or status_json[u"status"] == u"complete":
             return Status(**status_json)

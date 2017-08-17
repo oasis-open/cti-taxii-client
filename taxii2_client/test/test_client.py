@@ -98,6 +98,9 @@ STIX_BUNDLE = """{
   ]
 }"""
 GET_OBJECTS_RESPONSE = STIX_BUNDLE
+# get_object() still returns a bundle. In this case, the bundle has only one
+# object (the correct one.)
+GET_OBJECT_RESPONSE = GET_OBJECTS_RESPONSE
 
 # This is the expected response when calling ADD_OBJECTS with the STIX_BUNDLE
 # above. There is only one object, and it was added successfully. This response
@@ -278,7 +281,17 @@ def test_get_collection_objects(collection):
     response = collection.get_objects()
 
     assert response['spec_version'] == '2.0'
-    assert response['objects'][0]['id'] == 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61'
+    assert len(response['objects']) == 1
+
+
+@responses.activate
+def test_get_object(collection):
+    responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+
+    response = collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+    indicator = response['objects'][0]
+    assert indicator['id'] == 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61'
 
 
 @responses.activate
