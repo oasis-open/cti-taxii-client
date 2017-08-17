@@ -8,21 +8,18 @@ MEDIA_TYPE_TAXII_V20 = "application/vnd.oasis.taxii+json; version=2.0"
 
 class TAXIIServiceException(Exception):
     """Base class for exceptions raised by this library."""
-    def __init__(self, *args):
-        super(TAXIIServiceException, self).__init__(*args)
+    pass
 
 
 class InvalidArgumentsError(TAXIIServiceException):
     """Invalid arguments were passed to a method."""
-    def __init__(self, msg):
-        super(InvalidArgumentsError, self).__init__(msg)
+    pass
 
 
 class AccessError(TAXIIServiceException):
     """Attempt was made to read/write to a collection when the collection
     doesn't allow that operation."""
-    def __init__(self, msg):
-        super(AccessError, self).__init__(msg)
+    pass
 
 
 class _TAXIIEndpoint(object):
