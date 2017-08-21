@@ -19,24 +19,21 @@ cti-taxii-client is a minimal implementation of client for the TAXII 2.0 server.
 `Installation`
 ==============
 
-The easiest way to install the TAXII client is with pip:
+The easiest way to install the TAXII client is with pip::
 
-::
+  $ pip install taxii2-client
 
-  $ pip install taxii2_client
-  
-*The cti-taxii-client is not currently available on pip.*
 
 `Usage`
 =======
 
-The TAXII client is intended to be used as a python library.  There is no support to run it independently.
+The TAXII client is intended to be used as a Python library.  There is no support to run it independently.
 
 .. code:: python
 
-  import taxii2_client
+  import taxii2client
 
-  client = taxii2_client.TAXII2Client("http://taxii_server", "user_id", "user_password")
+  client = taxii2client.TAXII2Client("http://taxii_server", "user_id", "user_password")
 
 The authorization information is stored in the TAXII client instance, so it need not be supplied explicitly when request services.
 
