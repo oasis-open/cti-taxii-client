@@ -30,46 +30,39 @@ The easiest way to install the TAXII client is with pip::
 `Usage`
 =======
 
-The TAXII client is intended to be used as a Python library.  There is no
-support to run it independently.
+The TAXII client is intended to be used as a Python library.  There are no
+command line clients at this time.
+
+``taxii2-client`` provides four classes:
+
+- ``Server``
+- ``ApiRoot``
+- ``Collection``
+- ``Status``
+
+Each can be instantiated by passing a `url`, and (optional) `user` and
+`password` arguments.
 
 .. code:: python
 
-  import taxii2client
+  from taxii2client import Collection
+  collection = Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
+  collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
 
-  client = taxii2client.TAXII2Client("http://taxii_server", "user_id", "user_password")
-
-The authorization information is stored in the TAXII client instance, so it need
-not be supplied explicitly when request services.
-
-Once you have instantiated a TAXII client, you can get all meta data about the
-contents of the TAXII server as follows:
+You can also traverse parent-to-child relationships directly:
 
 .. code:: python
 
-  client.populate_available_information()
+  from taxii2client import Server
+  server = Server('https://example.com/taxii/', 'user_id', 'user_password')
+  api_root = server.api_roots[0]
+  collection = api_root.collections[0]
+  collection.add_objects(stix_bundle)
 
-This will cache the server's information in the client instance in instance
-variables:
+In addition to the object-specific properties and methods, all classes have a
+``refresh()`` method that reloads the URL corresponding to that resource, to
+ensure properties have the most up-to-date values.
 
-- api_roots
-- title
-- description
-- default_api_root
-
-Each api_root found on the server will be instantiated with its meta data
-
-- name
-- collections
-- information
-
-Each collection found in an api_root will be instantiated with its meta data
-
-- media_types
-- title
-- can_write
-- can_read
-- description
 
 Governance
 ==========
