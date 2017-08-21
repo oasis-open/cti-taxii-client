@@ -36,36 +36,41 @@ The TAXII client is intended to be used as a python library.  There is no suppor
 
   import taxii2_client
 
-  client = taxii2_client.TAXII2Client("http://taxii_server", "user_id", "user_password")
+  taxii_server = taxii2_client.Server("http://taxii_server", "user_id", "user_password")
 
-The authorization information is stored in the TAXII client instance, so it need not be supplied explicitly when request services.
+The authorization information is stored in the instance, so it need not be supplied explicitly when requesting services.
 
-Once you have instantiated a TAXII client, you can get all meta data about the contents of the TAXII server as follows:
+Once you have instantiated a TAXII server object, you can get all metadata about
+its contents via its properties.  You can also follow references to ApiRoots,
+collections, and objects.
 
 .. code:: python
 
-  client.populate_available_information()
+  roots = taxii_server.api_roots
 
-This will cache the server's information in the client instance in instance variables:
+This will lazily load and cache the server's information in the instance:
 
 - api_roots
 - title
 - description
-- default_api_root
+- default (i.e. the default API root)
+- contact
 
 Each api_root found on the server will be instantiated with its meta data
 
-- name
+- title
+- description
+- max_content_length
 - collections
-- information
 
 Each collection found in an api_root will be instantiated with its meta data
 
-- media_types
+- id
 - title
+- description
 - can_write
 - can_read
-- description
+- media_types
 
 Governance
 ==========
