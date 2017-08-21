@@ -48,6 +48,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'requests',
+        'six',
     ],
     extras_require={
         'test': [
@@ -55,6 +56,7 @@ setup(
             'pytest',
             'pytest-cov',
             'responses',
+            'tox',
         ],
     }
 )
