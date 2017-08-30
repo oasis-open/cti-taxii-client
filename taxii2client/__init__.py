@@ -354,7 +354,6 @@ class ApiRoot(_TAXIIEndpoint):
         response = self._conn.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._collections = []
-        print(response)
         for item in response['collections']:
             collection_url = url + item['id'] + "/"
             collection = Collection(collection_url, conn=self._conn, **item)
