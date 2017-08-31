@@ -1,8 +1,10 @@
 import pytest
 import responses
 
-from taxii2_client import (MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20,
-                           AccessError, ApiRoot, Collection, Server)
+from taxii2client import (
+    MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
+    Collection, Server
+)
 
 TAXII_SERVER = 'example.com'
 DISCOVERY_URL = 'https://{}/taxii/'.format(TAXII_SERVER)
