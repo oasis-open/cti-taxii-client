@@ -54,7 +54,7 @@ its contents via its properties:
 
 .. code:: python
 
-  roots = server.title
+  print(server.title)
 
 This will lazily load and cache the server's information in the instance:
 
