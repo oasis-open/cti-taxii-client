@@ -19,16 +19,16 @@ It supports the following TAXII 2.0 API services:
 - Get an Object
 - Get Object Manifests
 
-`Installation`
-==============
+Installation
+============
 
 The easiest way to install the TAXII client is with pip::
 
   $ pip install taxii2-client
 
 
-`Usage`
-=======
+Usage
+=====
 
 The TAXII client is intended to be used as a Python library.  There are no
 command line clients at this time.
