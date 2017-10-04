@@ -478,7 +478,7 @@ class _HTTPConnection(object):
         resp.raise_for_status()
 
         content_type = resp.headers['Content-Type']
-        if content_type != accept:
+        if not content_type.startswith(accept):
             msg = "Unexpected Response Content-Type: {}"
             raise TAXIIServiceException(msg.format(content_type))
 
