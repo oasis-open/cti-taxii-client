@@ -3,7 +3,7 @@ import responses
 
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
-    Collection, Server
+    Collection, Server, TAXIIServiceException
 )
 
 TAXII_SERVER = 'example.com'
@@ -394,3 +394,23 @@ def test_get_status(api_root):
     assert len(status.failures) == 1
     assert status.pending_count == 2
     assert len(status.pendings) == 2
+
+
+@responses.activate
+def test_content_type_valid(collection):
+    responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
+                  status=200, content_type="%s; charset=utf-8" % MEDIA_TYPE_STIX_V20)
+
+    response = collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+    indicator = response['objects'][0]
+    assert indicator['id'] == 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61'
+
+
+@responses.activate
+def test_content_type_invalid(collection):
+    responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
+                  status=200, content_type="taxii")
+
+    with pytest.raises(TAXIIServiceException) as excinfo:
+        collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+    assert "Unexpected Response Content-Type" in str(excinfo.value)
