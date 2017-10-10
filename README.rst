@@ -1,4 +1,4 @@
-|Build_Status| |Coverage| |Version|
+|Build_Status| |Coverage|
 
 ====================
 `cti-taxii-client`
@@ -198,5 +198,3 @@ any specific CLA-related questions to repository-cla@oasis-open.org.
    :target: https://travis-ci.org/oasis-open/cti-taxii-client
 .. |Coverage| image:: https://codecov.io/gh/oasis-open/cti-taxii-client/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/oasis-open/cti-taxii-client
-.. |Version| image:: https://img.shields.io/pypi/v/stix2-client.svg?maxAge=3600
-   :target: https://pypi.python.org/pypi/stix2-client/
