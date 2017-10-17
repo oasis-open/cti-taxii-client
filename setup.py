@@ -49,6 +49,7 @@ setup(
     install_requires=[
         'requests',
         'six',
+        'pytz',
     ],
     extras_require={
         'test': [

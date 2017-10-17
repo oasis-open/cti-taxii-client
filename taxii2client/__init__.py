@@ -1,4 +1,9 @@
+from __future__ import unicode_literals
+
+import datetime
+import pytz
 import requests
+import six
 import six.moves.urllib.parse as urlparse
 import time
 
@@ -20,6 +25,105 @@ class AccessError(TAXIIServiceException):
     """Attempt was made to read/write to a collection when the collection
     doesn't allow that operation."""
     pass
+
+
+def _format_datetime(dttm):
+    """Convert a datetime object into a valid STIX timestamp string.
+
+    1. Convert to timezone-aware
+    2. Convert to UTC
+    3. Format in ISO format
+    4. Ensure correct precision
+       a. Add subsecond value if non-zero and precision not defined
+    5. Add "Z"
+
+    """
+
+    if dttm.tzinfo is None or dttm.tzinfo.utcoffset(dttm) is None:
+        # dttm is timezone-naive; assume UTC
+        zoned = pytz.utc.localize(dttm)
+    else:
+        zoned = dttm.astimezone(pytz.utc)
+    ts = zoned.strftime("%Y-%m-%dT%H:%M:%S")
+    ms = zoned.strftime("%f")
+    precision = getattr(dttm, "precision", None)
+    if precision == 'second':
+        pass  # Already precise to the second
+    elif precision == "millisecond":
+        ts = ts + '.' + ms[:3]
+    elif zoned.microsecond > 0:
+        ts = ts + '.' + ms.rstrip("0")
+    return ts + "Z"
+
+
+def _ensure_datetime_to_string(maybe_dttm):
+    """If maybe_dttm is a datetime instance, convert to a STIX-compliant
+    string representation.  Otherwise return the value unchanged."""
+    if isinstance(maybe_dttm, datetime.datetime):
+        maybe_dttm = _format_datetime(maybe_dttm)
+    return maybe_dttm
+
+
+def _add_filters_to_url(url, filter_kwargs):
+    """
+    Add the given filters as query parameters to the given URL, and return it.
+    Supported keys are roughly from the spec: "version", "added_after", "id",
+    "type", "version".  The last three are for the "match" filters; you don't
+    need to add "match[]" around them.
+
+    Each value can be a single value or iterable of values.  For the filters
+    whose values are timestamps, datetime.datetime instances are accepted.
+    Other than that, all values must be strings.  None values, empty lists, etc
+    are silently ignored.
+
+    :param url: The url to add query parameters to
+    :param filter_kwargs: The filter information, as a mapping
+    :return: The augmented URL
+    """
+    query_params = {}
+    for kwarg, arglist in six.iteritems(filter_kwargs):
+        # If user passes an empty list, None, etc, silently skip?
+        if not arglist:
+            continue
+
+        # force iterability, for the sake of code uniformity
+        if not hasattr(arglist, "__iter__") or \
+                isinstance(arglist, six.string_types):
+            arglist = arglist,
+
+        if kwarg in ("id", "type"):
+            query_params["match[" + kwarg + "]"] = ",".join(arglist)
+
+        elif kwarg == "version":
+            query_params["match[version]"] = ",".join(
+                _ensure_datetime_to_string(val) for val in arglist
+            )
+
+        elif kwarg == "added_after":
+            if len(arglist) > 1:
+                raise InvalidArgumentsError('No more than one value for filter'
+                                            ' "added_after" may be given')
+
+            query_params["added_after"] = ",".join(
+                _ensure_datetime_to_string(val) for val in arglist
+            )
+
+        else:
+            raise InvalidArgumentsError("Unknown filter type: " + kwarg)
+
+    if query_params:
+        encoded_params = urlparse.urlencode(query_params)
+        url_parts = urlparse.urlsplit(url)
+        # replace existing query params if any, vs merging?
+        url = urlparse.urlunsplit((
+            url_parts[0],
+            url_parts[1],
+            url_parts[2],
+            encoded_params,
+            url_parts[4]
+        ))
+
+    return url
 
 
 class _TAXIIEndpoint(object):
@@ -197,16 +301,18 @@ class Collection(_TAXIIEndpoint):
 
         self._loaded = True
 
-    def get_objects(self, filters=None):
+    def get_objects(self, **filter_kwargs):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
-        # TODO: add filters
         self._verify_can_read()
-        return self._conn.get(self.objects_url, accept=MEDIA_TYPE_STIX_V20)
+        url = _add_filters_to_url(self.objects_url, filter_kwargs)
+        return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
 
-    def get_object(self, obj_id):
+    def get_object(self, obj_id, version=None):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + '/'
+        if version:
+            url = _add_filters_to_url(url, {"version": version})
         return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
@@ -265,12 +371,13 @@ class Collection(_TAXIIEndpoint):
 
         return status
 
-    def get_manifest(self, filters=None):
+    def get_manifest(self, **filter_kwargs):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         # TODO: add filters
         self._verify_can_read()
-        return self._conn.get(self.url + 'manifest/',
-                              accept=MEDIA_TYPE_TAXII_V20)
+        url = _add_filters_to_url(self.url + 'manifest/',
+                                  filter_kwargs)
+        return self._conn.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
 
 class ApiRoot(_TAXIIEndpoint):

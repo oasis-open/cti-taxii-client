@@ -1,9 +1,13 @@
+import datetime
+import re
+
 import pytest
 import responses
 
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
-    Collection, Server, TAXIIServiceException
+    Collection, InvalidArgumentsError, Server, TAXIIServiceException,
+    _add_filters_to_url
 )
 
 TAXII_SERVER = 'example.com'
@@ -414,3 +418,53 @@ def test_content_type_invalid(collection):
     with pytest.raises(TAXIIServiceException) as excinfo:
         collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
     assert "Unexpected Response Content-Type" in str(excinfo.value)
+
+
+def test_url_filter_type():
+    url = _add_filters_to_url("http://www.example.com", {"type": "foo"})
+    assert url == "http://www.example.com?match%5Btype%5D=foo"
+
+    url = _add_filters_to_url("http://www.example.com", {"type": ("foo", "bar")})
+    assert url == "http://www.example.com?match%5Btype%5D=foo%2Cbar"
+
+
+def test_url_filter_id():
+    url = _add_filters_to_url("http://www.example.com", {"id": "foo"})
+    assert url == "http://www.example.com?match%5Bid%5D=foo"
+
+    url = _add_filters_to_url("http://www.example.com", {"id": ("foo", "bar")})
+    assert url == "http://www.example.com?match%5Bid%5D=foo%2Cbar"
+
+
+def test_url_filter_version():
+    url = _add_filters_to_url("http://www.example.com", {"version": "foo"})
+    assert url == "http://www.example.com?match%5Bversion%5D=foo"
+
+    now = datetime.datetime.now()
+    url = _add_filters_to_url("http://www.example.com", {"version": now})
+    assert re.match(r"^http://www.example.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
+                    url)
+
+    url = _add_filters_to_url("http://www.example.com", {"version":
+                                                         (now, "bar")})
+    assert re.match(r"^http://www.example.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z%2Cbar$",
+                    url)
+
+
+def test_url_filter_added_after():
+    url = _add_filters_to_url("http://www.example.com", {"added_after": "foo"})
+    assert url == "http://www.example.com?added_after=foo"
+
+    now = datetime.datetime.now()
+    url = _add_filters_to_url("http://www.example.com", {"added_after": now})
+    assert re.match(r"^http://www.example.com\?added_after=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
+                    url)
+
+    with pytest.raises(InvalidArgumentsError):
+        _add_filters_to_url("http://www.example.com", {"added_after":
+                                                       (now, "bar")})
+
+
+def test_url_filter_unknown():
+    with pytest.raises(InvalidArgumentsError):
+        _add_filters_to_url("http://www.example.com", {"foo": "bar"})
