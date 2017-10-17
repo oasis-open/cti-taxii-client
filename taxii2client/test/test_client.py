@@ -442,12 +442,12 @@ def test_url_filter_version():
 
     now = datetime.datetime.now()
     url = _add_filters_to_url("http://www.example.com", {"version": now})
-    assert re.match(r"^http://www.example.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
+    assert re.match(r"^http://www\.example\.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
                     url)
 
     url = _add_filters_to_url("http://www.example.com", {"version":
                                                          (now, "bar")})
-    assert re.match(r"^http://www.example.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z%2Cbar$",
+    assert re.match(r"^http://www\.example\.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z%2Cbar$",
                     url)
 
 
@@ -457,7 +457,7 @@ def test_url_filter_added_after():
 
     now = datetime.datetime.now()
     url = _add_filters_to_url("http://www.example.com", {"added_after": now})
-    assert re.match(r"^http://www.example.com\?added_after=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
+    assert re.match(r"^http://www\.example\.com\?added_after=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
                     url)
 
     with pytest.raises(InvalidArgumentsError):
