@@ -169,7 +169,7 @@ class Status(_TAXIIEndpoint):
             self.refresh()
 
     def __nonzero__(self):
-        return self.status == u"complete"
+        return self.status == "complete"
     __bool__ = __nonzero__
 
     def refresh(self):
@@ -289,11 +289,11 @@ class Collection(_TAXIIEndpoint):
 
     def _verify_can_read(self):
         if not self.can_read:
-            raise AccessError(u"Collection '%s' does not allow reading." % self.url)
+            raise AccessError("Collection '%s' does not allow reading." % self.url)
 
     def _verify_can_write(self):
         if not self.can_write:
-            raise AccessError(u"Collection '%s' does not allow writing." % self.url)
+            raise AccessError("Collection '%s' does not allow writing." % self.url)
 
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
@@ -347,23 +347,23 @@ class Collection(_TAXIIEndpoint):
         """
         self._verify_can_write()
         headers = {
-            u"Accept": MEDIA_TYPE_TAXII_V20,
-            u"Content-Type": MEDIA_TYPE_STIX_V20,
+            "Accept": MEDIA_TYPE_TAXII_V20,
+            "Content-Type": MEDIA_TYPE_STIX_V20,
         }
         status_json = self._conn.post(self.objects_url, headers=headers, json=bundle)
 
-        status_url = urlparse.urljoin(self.url, u"../../status/{}".format(
-            status_json[u"id"]))
+        status_url = urlparse.urljoin(self.url, "../../status/{}".format(
+            status_json["id"]))
 
         status = Status(url=status_url, conn=self._conn, **status_json)
 
-        if not wait_for_completion or status.status == u"complete":
+        if not wait_for_completion or status.status == "complete":
             return status
 
         # TODO: consider moving this to a "Status.wait_until_final()" function.
         start_time = time.time()
         elapsed = 0
-        while status.status != u"complete" and \
+        while status.status != "complete" and \
                 (timeout <= 0 or elapsed < timeout):
             time.sleep(poll_interval)
             status.refresh()
