@@ -7,7 +7,7 @@ import responses
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
     Collection, InvalidArgumentsError, Server, TAXIIServiceException,
-    _add_filters_to_url
+    _filter_kwargs_to_query_params
 )
 
 TAXII_SERVER = 'example.com'
@@ -421,50 +421,62 @@ def test_content_type_invalid(collection):
 
 
 def test_url_filter_type():
-    url = _add_filters_to_url("http://www.example.com", {"type": "foo"})
-    assert url == "http://www.example.com?match%5Btype%5D=foo"
+    params = _filter_kwargs_to_query_params({"type": "foo"})
+    assert params == {"match[type]": "foo"}
 
-    url = _add_filters_to_url("http://www.example.com", {"type": ("foo", "bar")})
-    assert url == "http://www.example.com?match%5Btype%5D=foo%2Cbar"
-
-
-def test_url_filter_id():
-    url = _add_filters_to_url("http://www.example.com", {"id": "foo"})
-    assert url == "http://www.example.com?match%5Bid%5D=foo"
-
-    url = _add_filters_to_url("http://www.example.com", {"id": ("foo", "bar")})
-    assert url == "http://www.example.com?match%5Bid%5D=foo%2Cbar"
+    params = _filter_kwargs_to_query_params({"type": ("foo", "bar")})
+    assert params == {"match[type]": "foo,bar"}
 
 
-def test_url_filter_version():
-    url = _add_filters_to_url("http://www.example.com", {"version": "foo"})
-    assert url == "http://www.example.com?match%5Bversion%5D=foo"
+def test_filter_id():
+    params = _filter_kwargs_to_query_params({"id": "foo"})
+    assert params == {"match[id]": "foo"}
 
-    now = datetime.datetime.now()
-    url = _add_filters_to_url("http://www.example.com", {"version": now})
-    assert re.match(r"^http://www\.example\.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
-                    url)
-
-    url = _add_filters_to_url("http://www.example.com", {"version":
-                                                         (now, "bar")})
-    assert re.match(r"^http://www\.example\.com\?match%5Bversion%5D=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z%2Cbar$",
-                    url)
+    params = _filter_kwargs_to_query_params({"id": ("foo", "bar")})
+    assert params == {"match[id]": "foo,bar"}
 
 
-def test_url_filter_added_after():
-    url = _add_filters_to_url("http://www.example.com", {"added_after": "foo"})
-    assert url == "http://www.example.com?added_after=foo"
+def test_filter_version():
+    params = _filter_kwargs_to_query_params({"version": "foo"})
+    assert params == {"match[version]": "foo"}
 
-    now = datetime.datetime.now()
-    url = _add_filters_to_url("http://www.example.com", {"added_after": now})
-    assert re.match(r"^http://www\.example\.com\?added_after=\d\d\d\d-\d\d-\d\dT\d\d%3A\d\d%3A\d\d(\.\d+)?Z$",
-                    url)
+    dt = datetime.datetime(2010,9,8,7,6,5)
+    params = _filter_kwargs_to_query_params({"version": dt})
+    assert params == {"match[version]": "2010-09-08T07:06:05Z"}
+
+    params = _filter_kwargs_to_query_params({"version": (dt, "bar")})
+    assert params == {"match[version]": "2010-09-08T07:06:05Z,bar"}
+
+
+def test_filter_added_after():
+    params = _filter_kwargs_to_query_params({"added_after": "foo"})
+    assert params == {"added_after": "foo"}
+
+    dt = datetime.datetime(2010,9,8,7,6,5)
+    params = _filter_kwargs_to_query_params({"added_after": dt})
+    assert params == {"added_after": "2010-09-08T07:06:05Z"}
 
     with pytest.raises(InvalidArgumentsError):
-        _add_filters_to_url("http://www.example.com", {"added_after":
-                                                       (now, "bar")})
+        _filter_kwargs_to_query_params({"added_after": (dt, "bar")})
 
 
-def test_url_filter_unknown():
-    with pytest.raises(InvalidArgumentsError):
-        _add_filters_to_url("http://www.example.com", {"foo": "bar"})
+def test_filter_combo():
+    dt = datetime.datetime(2010,9,8,7,6,5)
+    params = _filter_kwargs_to_query_params({
+        "added_after": dt,
+        "type": ("indicator", "malware"),
+        "version": dt,
+        "foo": ("bar", "baz")
+    })
+
+    assert params == {
+        "added_after": "2010-09-08T07:06:05Z",
+        "match[type]": "indicator,malware",
+        "match[version]": "2010-09-08T07:06:05Z",
+        "match[foo]": "bar,baz"
+    }
+
+
+def test_params_filter_unknown():
+    params = _filter_kwargs_to_query_params({"foo": "bar"})
+    assert params == {"match[foo]": "bar"}

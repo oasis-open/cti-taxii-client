@@ -64,21 +64,21 @@ def _ensure_datetime_to_string(maybe_dttm):
     return maybe_dttm
 
 
-def _add_filters_to_url(url, filter_kwargs):
+def _filter_kwargs_to_query_params(filter_kwargs):
     """
-    Add the given filters as query parameters to the given URL, and return it.
-    Supported keys are roughly from the spec: "version", "added_after", "id",
-    "type", "version".  The last three are for the "match" filters; you don't
-    need to add "match[]" around them.
+    Convert API keyword args to a mapping of URL query parameters.  Except for
+    "added_after", all keywords are mapped to match filters, i.e. to a query
+    parameter of the form "match[<kwarg>]".  "added_after" is left alone, since
+    it's a special filter, as defined in the spec.
 
-    Each value can be a single value or iterable of values.  For the filters
-    whose values are timestamps, datetime.datetime instances are accepted.
-    Other than that, all values must be strings.  None values, empty lists, etc
-    are silently ignored.
+    Each value can be a single value or iterable of values.  "version" and
+    "added_after" get special treatment, since they are timestamp-valued:
+    datetime.datetime instances are supported and automatically converted to
+    STIX-compliant strings.  Other than that, all values must be strings.  None
+    values, empty lists, etc are silently ignored.
 
-    :param url: The url to add query parameters to
     :param filter_kwargs: The filter information, as a mapping
-    :return: The augmented URL
+    :return: The query parameter map, mapping strings to strings.
     """
     query_params = {}
     for kwarg, arglist in six.iteritems(filter_kwargs):
@@ -91,10 +91,7 @@ def _add_filters_to_url(url, filter_kwargs):
                 isinstance(arglist, six.string_types):
             arglist = arglist,
 
-        if kwarg in ("id", "type"):
-            query_params["match[" + kwarg + "]"] = ",".join(arglist)
-
-        elif kwarg == "version":
+        if kwarg == "version":
             query_params["match[version]"] = ",".join(
                 _ensure_datetime_to_string(val) for val in arglist
             )
@@ -109,21 +106,9 @@ def _add_filters_to_url(url, filter_kwargs):
             )
 
         else:
-            raise InvalidArgumentsError("Unknown filter type: " + kwarg)
+            query_params["match["+kwarg+"]"] = ",".join(arglist)
 
-    if query_params:
-        encoded_params = urlparse.urlencode(query_params)
-        url_parts = urlparse.urlsplit(url)
-        # replace existing query params if any, vs merging?
-        url = urlparse.urlunsplit((
-            url_parts[0],
-            url_parts[1],
-            url_parts[2],
-            encoded_params,
-            url_parts[4]
-        ))
-
-    return url
+    return query_params
 
 
 class _TAXIIEndpoint(object):
@@ -304,16 +289,19 @@ class Collection(_TAXIIEndpoint):
     def get_objects(self, **filter_kwargs):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
-        url = _add_filters_to_url(self.objects_url, filter_kwargs)
-        return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
+        query_params = _filter_kwargs_to_query_params(filter_kwargs)
+        return self._conn.get(self.objects_url, accept=MEDIA_TYPE_STIX_V20,
+                              params=query_params)
 
     def get_object(self, obj_id, version=None):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + '/'
+        query_params = None
         if version:
-            url = _add_filters_to_url(url, {"version": version})
-        return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20)
+            query_params = _filter_kwargs_to_query_params({"version": version})
+        return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20,
+                              params=query_params)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
                     timeout=60):
@@ -373,11 +361,10 @@ class Collection(_TAXIIEndpoint):
 
     def get_manifest(self, **filter_kwargs):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
-        # TODO: add filters
         self._verify_can_read()
-        url = _add_filters_to_url(self.url + 'manifest/',
-                                  filter_kwargs)
-        return self._conn.get(url, accept=MEDIA_TYPE_TAXII_V20)
+        query_params = _filter_kwargs_to_query_params(filter_kwargs)
+        return self._conn.get(self.url + 'manifest/', accept=MEDIA_TYPE_TAXII_V20,
+                              params=query_params)
 
 
 class ApiRoot(_TAXIIEndpoint):
@@ -568,7 +555,7 @@ class _HTTPConnection(object):
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
 
-    def get(self, url, accept):
+    def get(self, url, accept, params=None):
         """Perform an HTTP GET, using the saved requests.Session and auth info.
 
         Args:
@@ -580,7 +567,7 @@ class _HTTPConnection(object):
         headers = {
             'Accept': accept
         }
-        resp = self.session.get(url, headers=headers)
+        resp = self.session.get(url, headers=headers, params=params)
 
         resp.raise_for_status()
 
