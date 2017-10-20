@@ -440,7 +440,7 @@ def test_filter_version():
     params = _filter_kwargs_to_query_params({"version": "foo"})
     assert params == {"match[version]": "foo"}
 
-    dt = datetime.datetime(2010,9,8,7,6,5)
+    dt = datetime.datetime(2010, 9, 8, 7, 6, 5)
     params = _filter_kwargs_to_query_params({"version": dt})
     assert params == {"match[version]": "2010-09-08T07:06:05Z"}
 
@@ -452,7 +452,7 @@ def test_filter_added_after():
     params = _filter_kwargs_to_query_params({"added_after": "foo"})
     assert params == {"added_after": "foo"}
 
-    dt = datetime.datetime(2010,9,8,7,6,5)
+    dt = datetime.datetime(2010, 9, 8, 7, 6, 5)
     params = _filter_kwargs_to_query_params({"added_after": dt})
     assert params == {"added_after": "2010-09-08T07:06:05Z"}
 
@@ -461,7 +461,7 @@ def test_filter_added_after():
 
 
 def test_filter_combo():
-    dt = datetime.datetime(2010,9,8,7,6,5)
+    dt = datetime.datetime(2010, 9, 8, 7, 6, 5)
     params = _filter_kwargs_to_query_params({
         "added_after": dt,
         "type": ("indicator", "malware"),
