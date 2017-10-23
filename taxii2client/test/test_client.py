@@ -1,9 +1,12 @@
+import datetime
+
 import pytest
 import responses
 
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
-    Collection, Server, TAXIIServiceException
+    Collection, InvalidArgumentsError, Server, TAXIIServiceException,
+    _filter_kwargs_to_query_params
 )
 
 TAXII_SERVER = 'example.com'
@@ -414,3 +417,65 @@ def test_content_type_invalid(collection):
     with pytest.raises(TAXIIServiceException) as excinfo:
         collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
     assert "Unexpected Response Content-Type" in str(excinfo.value)
+
+
+def test_url_filter_type():
+    params = _filter_kwargs_to_query_params({"type": "foo"})
+    assert params == {"match[type]": "foo"}
+
+    params = _filter_kwargs_to_query_params({"type": ("foo", "bar")})
+    assert params == {"match[type]": "foo,bar"}
+
+
+def test_filter_id():
+    params = _filter_kwargs_to_query_params({"id": "foo"})
+    assert params == {"match[id]": "foo"}
+
+    params = _filter_kwargs_to_query_params({"id": ("foo", "bar")})
+    assert params == {"match[id]": "foo,bar"}
+
+
+def test_filter_version():
+    params = _filter_kwargs_to_query_params({"version": "foo"})
+    assert params == {"match[version]": "foo"}
+
+    dt = datetime.datetime(2010, 9, 8, 7, 6, 5)
+    params = _filter_kwargs_to_query_params({"version": dt})
+    assert params == {"match[version]": "2010-09-08T07:06:05Z"}
+
+    params = _filter_kwargs_to_query_params({"version": (dt, "bar")})
+    assert params == {"match[version]": "2010-09-08T07:06:05Z,bar"}
+
+
+def test_filter_added_after():
+    params = _filter_kwargs_to_query_params({"added_after": "foo"})
+    assert params == {"added_after": "foo"}
+
+    dt = datetime.datetime(2010, 9, 8, 7, 6, 5)
+    params = _filter_kwargs_to_query_params({"added_after": dt})
+    assert params == {"added_after": "2010-09-08T07:06:05Z"}
+
+    with pytest.raises(InvalidArgumentsError):
+        _filter_kwargs_to_query_params({"added_after": (dt, "bar")})
+
+
+def test_filter_combo():
+    dt = datetime.datetime(2010, 9, 8, 7, 6, 5)
+    params = _filter_kwargs_to_query_params({
+        "added_after": dt,
+        "type": ("indicator", "malware"),
+        "version": dt,
+        "foo": ("bar", "baz")
+    })
+
+    assert params == {
+        "added_after": "2010-09-08T07:06:05Z",
+        "match[type]": "indicator,malware",
+        "match[version]": "2010-09-08T07:06:05Z",
+        "match[foo]": "bar,baz"
+    }
+
+
+def test_params_filter_unknown():
+    params = _filter_kwargs_to_query_params({"foo": "bar"})
+    assert params == {"match[foo]": "bar"}
