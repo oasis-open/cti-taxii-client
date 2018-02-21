@@ -118,14 +118,14 @@ class _TAXIIEndpoint(object):
     yields support in subclasses for use as contextmanagers, to ensure
     resources are released.
     """
-    def __init__(self, url, user=None, password=None, conn=None):
+    def __init__(self, url, user=None, password=None, verify=True, conn=None):
         if conn and (user or password):
             raise InvalidArgumentsError("A connection and user/password may"
                                         " not both be provided.")
         elif conn:
             self._conn = conn
         else:
-            self._conn = _HTTPConnection(user, password)
+            self._conn = _HTTPConnection(user, password, verify)
 
         self.url = url
 
@@ -196,7 +196,7 @@ class Collection(_TAXIIEndpoint):
     undesirable, you may manually create Collection instances.
     """
 
-    def __init__(self, url, user=None, password=None, conn=None, **kwargs):
+    def __init__(self, url, user=None, password=None, verify=True, conn=None, **kwargs):
         """
         Initialize a new Collection.  Either user/password or conn may be
         given, but not both.  The latter is intended for internal use, when
@@ -207,11 +207,14 @@ class Collection(_TAXIIEndpoint):
         :param url: A TAXII endpoint for a collection
         :param user: User name for authentication (optional)
         :param password: Password for authentication (optional)
+        :param verify: Either a boolean, in which case it controls whether we verify
+            the server's TLS certificate, or a string, in which case it must be a path
+            to a CA bundle to use. Defaults to `True` (optional)
         :param conn: A _HTTPConnection to reuse (optional)
         :param kwargs: Collection metadata, if known in advance (optional)
         """
 
-        super(Collection, self).__init__(url, user, password, conn)
+        super(Collection, self).__init__(url, user, password, verify, conn)
 
         self._loaded = False
 
@@ -551,8 +554,9 @@ class _HTTPConnection(object):
     for an independent self-contained interaction.
     """
 
-    def __init__(self, user=None, password=None):
+    def __init__(self, user=None, password=None, verify=True):
         self.session = requests.Session()
+        self.session.verify = verify
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
 
