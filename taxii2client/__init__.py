@@ -194,6 +194,24 @@ class Status(_TAXIIEndpoint):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
         self._populate_fields(**response)
 
+    def wait_until_final(self, poll_interval=1, timeout=60):
+        """It will poll the URL to grab the latest status resource in a given
+        timeout and time interval.
+
+        Args:
+            poll_interval: how often to poll the status service (seconds)
+            timeout: how long to poll the URL until giving up (seconds).
+                Use <= 0 to wait forever
+
+        """
+        start_time = time.time()
+        elapsed = 0
+        while (self.status != "complete" and
+                (timeout <= 0 or elapsed < timeout)):
+            time.sleep(poll_interval)
+            self.refresh()
+            elapsed = time.time() - start_time
+
     def _populate_fields(self, id, status, total_count, success_count,
                          failure_count, pending_count, request_timestamp=None,
                          successes=None, failures=None, pendings=None):
@@ -361,13 +379,13 @@ class Collection(_TAXIIEndpoint):
 
         Args:
             bundle: A STIX bundle with the objects to add (JSON as it would be
-                parsed into native Python).
+                parsed into native Python)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
             poll_interval: If waiting for completion, how often to poll
                 the status service (seconds)
             timeout: If waiting for completion, how long to poll until giving
-                up (seconds).  Use <= 0 to wait forever.
+                up (seconds).  Use <= 0 to wait forever
 
         Returns:
             If ``wait_for_completion`` is False, a Status object corresponding
@@ -400,14 +418,7 @@ class Collection(_TAXIIEndpoint):
         if not wait_for_completion or status.status == "complete":
             return status
 
-        # TODO: consider moving this to a "Status.wait_until_final()" function.
-        start_time = time.time()
-        elapsed = 0
-        while (status.status != "complete" and
-                (timeout <= 0 or elapsed < timeout)):
-            time.sleep(poll_interval)
-            status.refresh()
-            elapsed = time.time() - start_time
+        status.wait_until_final(poll_interval, timeout)
 
         return status
 
