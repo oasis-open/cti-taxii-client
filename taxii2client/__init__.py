@@ -156,14 +156,30 @@ class _TAXIIEndpoint(object):
 
 
 class Status(_TAXIIEndpoint):
-    """TAXII Status Resource"""
+    """TAXII Status Resource
+
+    This class represents the ``Get Status` endpoint (section 4.3) and also
+    contains the information about the Status Resource (section 4.3.1).
+
+    """
     # We don't need to jump through the same lazy-load as with Collection,
     # since it's *far* less likely people will create these manually rather
     # than just getting them returned from Collection.add_objects(), and there
     # aren't other endpoints to call on the Status object.
 
-    def __init__(self, url, user=None, password=None, conn=None, **kwargs):
-        super(Status, self).__init__(url, user, password, conn)
+    def __init__(self, url, user=None, password=None, verify=True, conn=None,
+                 **kwargs):
+        """Create an API root resource endpoint.
+
+        Args:
+            url (str): URL of a TAXII status resource endpoint
+            user (str): username for authentication (optional)
+            password (str): password for authentication (optional)
+            conn (_HTTPConnection): reuse connection object, as an alternative
+                to providing username/password
+
+        """
+        super(Status, self).__init__(url, user, password, verify, conn)
         if kwargs:
             self._populate_fields(**kwargs)
         else:
@@ -183,6 +199,7 @@ class Status(_TAXIIEndpoint):
                          successes=None, failures=None, pendings=None):
         self.id = id
         self.status = status
+        self.request_timestamp = request_timestamp
         self.total_count = total_count
         self.success_count = success_count
         self.failure_count = failure_count
@@ -364,15 +381,19 @@ class Collection(_TAXIIEndpoint):
 
         """
         self._verify_can_write()
+
         headers = {
             "Accept": MEDIA_TYPE_TAXII_V20,
             "Content-Type": MEDIA_TYPE_STIX_V20,
         }
+
         status_json = self._conn.post(self.objects_url, headers=headers,
                                       json=bundle)
 
-        status_url = urlparse.urljoin(self.url, "../../status/{}".format(
-            status_json["id"]))
+        status_url = urlparse.urljoin(
+            self.url,
+            "../../status/{}".format(status_json["id"])
+        )
 
         status = Status(url=status_url, conn=self._conn, **status_json)
 
@@ -382,8 +403,8 @@ class Collection(_TAXIIEndpoint):
         # TODO: consider moving this to a "Status.wait_until_final()" function.
         start_time = time.time()
         elapsed = 0
-        while status.status != "complete" and \
-                (timeout <= 0 or elapsed < timeout):
+        while (status.status != "complete" and
+                (timeout <= 0 or elapsed < timeout)):
             time.sleep(poll_interval)
             status.refresh()
             elapsed = time.time() - start_time
@@ -416,9 +437,18 @@ class ApiRoot(_TAXIIEndpoint):
 
     """
 
-    def __init__(self, url, user=None, password=None, conn=None):
+    def __init__(self, url, user=None, password=None, verify=True, conn=None):
+        """Create an API root resource endpoint.
 
-        super(ApiRoot, self).__init__(url, user, password, conn)
+        Args:
+            url (str): URL of a TAXII API root resource endpoint
+            user (str): username for authentication (optional)
+            password (str): password for authentication (optional)
+            conn (_HTTPConnection): reuse connection object, as an alternative
+                to providing username/password
+
+        """
+        super(ApiRoot, self).__init__(url, user, password, verify, conn)
 
         self._loaded_collections = False
         self._loaded_information = False
@@ -517,8 +547,8 @@ class Server(_TAXIIEndpoint):
             url (str): URL of a TAXII server discovery endpoint
             user (str): username for authentication (optional)
             password (str): password for authentication (optional)
-            conn (_HTTPConnection): A connection object, as an alternative to
-                providing username/password
+            conn (_HTTPConnection): reuse connection object, as an alternative
+                to providing username/password
 
         """
         super(Server, self).__init__(url, user, password, verify, conn)
