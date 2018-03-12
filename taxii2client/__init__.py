@@ -78,8 +78,13 @@ def _filter_kwargs_to_query_params(filter_kwargs):
     STIX-compliant strings.  Other than that, all values must be strings.  None
     values, empty lists, etc are silently ignored.
 
-    :param filter_kwargs: The filter information, as a mapping
-    :return: The query parameter map, mapping strings to strings.
+    Args:
+        filter_kwargs: The filter information, as a mapping.
+
+    Returns:
+        query_params (dict): The query parameter map, mapping strings to
+            strings.
+
     """
     query_params = {}
     for kwarg, arglist in six.iteritems(filter_kwargs):
@@ -107,7 +112,7 @@ def _filter_kwargs_to_query_params(filter_kwargs):
             )
 
         else:
-            query_params["match["+kwarg+"]"] = ",".join(arglist)
+            query_params["match[" + kwarg + "]"] = ",".join(arglist)
 
     return query_params
 
@@ -115,10 +120,20 @@ def _filter_kwargs_to_query_params(filter_kwargs):
 class _TAXIIEndpoint(object):
     """Contains some data and functionality common to all TAXII endpoint
     classes: a URL, connection, and ability to close the connection.  It also
-    yields support in subclasses for use as contextmanagers, to ensure
+    yields support in subclasses for use as context managers, to ensure
     resources are released.
+
     """
     def __init__(self, url, user=None, password=None, verify=True, conn=None):
+        """Create a TAXII endpoint.
+
+        Args:
+            user (str): username for authentication (optional)
+            password (str): password for authentication (optional)
+            verify (bool): validate the entity credentials (default: True)
+            conn (_HTTPConnection): A connection to reuse (optional)
+
+        """
         if conn and (user or password):
             raise InvalidArgumentsError("A connection and user/password may"
                                         " not both be provided.")
@@ -142,10 +157,10 @@ class _TAXIIEndpoint(object):
 
 class Status(_TAXIIEndpoint):
     """TAXII Status Resource"""
-    # We don't need to jump through the same lazy-load as with Collection, since
-    # it's *far* less likely people will create these manually rather than
-    # just getting them returned from Collection.add_objects(), and there aren't
-    # other endpoints to call on the Status object.
+    # We don't need to jump through the same lazy-load as with Collection,
+    # since it's *far* less likely people will create these manually rather
+    # than just getting them returned from Collection.add_objects(), and there
+    # aren't other endpoints to call on the Status object.
 
     def __init__(self, url, user=None, password=None, conn=None, **kwargs):
         super(Status, self).__init__(url, user, password, conn)
@@ -156,6 +171,7 @@ class Status(_TAXIIEndpoint):
 
     def __nonzero__(self):
         return self.status == "complete"
+
     __bool__ = __nonzero__
 
     def refresh(self):
@@ -194,9 +210,11 @@ class Collection(_TAXIIEndpoint):
     with all other collections obtained from the same ApiRoot, as well as the
     ApiRoot instance itself.  Closing one will close them all.  If this is
     undesirable, you may manually create Collection instances.
+
     """
 
-    def __init__(self, url, user=None, password=None, verify=True, conn=None, **kwargs):
+    def __init__(self, url, user=None, password=None, verify=True, conn=None,
+                 **kwargs):
         """
         Initialize a new Collection.  Either user/password or conn may be
         given, but not both.  The latter is intended for internal use, when
@@ -204,14 +222,17 @@ class Collection(_TAXIIEndpoint):
         testing, etc.  Users should use user/password (if required) which will
         create a new connection.
 
-        :param url: A TAXII endpoint for a collection
-        :param user: User name for authentication (optional)
-        :param password: Password for authentication (optional)
-        :param verify: Either a boolean, in which case it controls whether we verify
-            the server's TLS certificate, or a string, in which case it must be a path
-            to a CA bundle to use. Defaults to `True` (optional)
-        :param conn: A _HTTPConnection to reuse (optional)
-        :param kwargs: Collection metadata, if known in advance (optional)
+        Args:
+            url (str): A TAXII endpoint for a collection
+            user (str): User name for authentication (optional)
+            password (str): Password for authentication (optional)
+            verify (bool): Either a boolean, in which case it controls whether
+                we verify the server's TLS certificate, or a string, in which
+                case it must be a path to a CA bundle to use. Defaults to
+                `True` (optional)
+            conn (_HTTPConnection): A connection to reuse (optional)
+            kwargs: Collection metadata, if known in advance (optional)
+
         """
 
         super(Collection, self).__init__(url, user, password, verify, conn)
@@ -309,7 +330,7 @@ class Collection(_TAXIIEndpoint):
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
                     timeout=60):
-        """Implement the ``Add Objects`` endpoint (sectdion 5.4)
+        """Implement the ``Add Objects`` endpoint (section 5.4)
 
         Add objects to the collection.  This may be performed either
         synchronously or asynchronously.  To add asynchronously, set
@@ -321,28 +342,34 @@ class Collection(_TAXIIEndpoint):
         and the TAXII "status" service will be polled until the timeout
         expires, or the operation completes.
 
-        :param bundle: A STIX bundle with the objects to add (JSON as it would
-            be parsed into native Python).
-        :param wait_for_completion: Whether to wait for the add operation to
-            complete before returning
-        :param poll_interval: If waiting for completion, how often to poll
-            the status service (seconds)
-        :param timeout: If waiting for completion, how long to poll until
-            giving up (seconds).  Use <= 0 to wait forever.
-        :return: If wait_for_completion is False, a Status object corresponding
+        Args:
+            bundle: A STIX bundle with the objects to add (JSON as it would be
+                parsed into native Python).
+            wait_for_completion (bool): Whether to wait for the add operation
+                to complete before returning
+            poll_interval: If waiting for completion, how often to poll
+                the status service (seconds)
+            timeout: If waiting for completion, how long to poll until giving
+                up (seconds).  Use <= 0 to wait forever.
+
+        Returns:
+            If ``wait_for_completion`` is False, a Status object corresponding
             to the initial status data returned from the service, is returned.
-            The status may not yet be complete at this point.  If
-            wait_for_completion is True, a Status object corresponding to the
-            completed operation is returned if it didn't time out; otherwise
-            a Status object corresponding to the most recent data obtained
-            before the timeout, is returned.
+            The status may not yet be complete at this point.
+
+            If ``wait_for_completion`` is True, a Status object corresponding
+            to the completed operation is returned if it didn't time out;
+            otherwise a Status object corresponding to the most recent data
+            obtained before the timeout, is returned.
+
         """
         self._verify_can_write()
         headers = {
             "Accept": MEDIA_TYPE_TAXII_V20,
             "Content-Type": MEDIA_TYPE_STIX_V20,
         }
-        status_json = self._conn.post(self.objects_url, headers=headers, json=bundle)
+        status_json = self._conn.post(self.objects_url, headers=headers,
+                                      json=bundle)
 
         status_url = urlparse.urljoin(self.url, "../../status/{}".format(
             status_json["id"]))
@@ -367,17 +394,18 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.url + 'manifest/', accept=MEDIA_TYPE_TAXII_V20,
+        return self._conn.get(self.url + 'manifest/',
+                              accept=MEDIA_TYPE_TAXII_V20,
                               params=query_params)
 
 
 class ApiRoot(_TAXIIEndpoint):
     """Information about a TAXII API Root.
 
-    This class corresponds to the ``Get API Root Information`` (section 4.2) and
-    ``Get Collections`` (section 5.1) endpoints, and contains the information
-    found in the corresponding ``API Root Resource`` (section 4.2.1) and
-    ``Collections Resource`` (section 5.1.1).
+    This class corresponds to the ``Get API Root Information`` (section 4.2)
+    and ``Get Collections`` (section 5.1) endpoints, and contains the
+    information found in the corresponding ``API Root Resource``
+    (section 4.2.1) and ``Collections Resource`` (section 5.1.1).
 
     As obtained from a Server, each ApiRoot instance gets its own connection
     pool(s).  Collections returned by instances of this class share the same
@@ -385,6 +413,7 @@ class ApiRoot(_TAXIIEndpoint):
     username/password is used to connect to them, as was used for this ApiRoot.
     If either of these is undesirable, Collection instances may be created
     manually.
+
     """
 
     def __init__(self, url, user=None, password=None, conn=None):
@@ -478,17 +507,20 @@ class Server(_TAXIIEndpoint):
     so that they can be independent: closing one won't close others, and
     closing this server object won't close any of the ApiRoot objects (which
     may refer to different hosts than was used for discovery).
+
     """
 
     def __init__(self, url, user=None, password=None, conn=None):
-        """
-        :param url: URL of a TAXII server discovery endpoint
-        :param user: username for authentication (optional)
-        :param password: password for authentication (optional)
-        :param conn: A connection object, as an alternative to providing
-            username/password
-        """
+        """Create a server discovery endpoint.
 
+        Args:
+            url (str): URL of a TAXII server discovery endpoint
+            user (str): username for authentication (optional)
+            password (str): password for authentication (optional)
+            conn (_HTTPConnection): A connection object, as an alternative to
+                providing username/password
+
+        """
         super(Server, self).__init__(url, user, password, conn)
 
         self._user = user
@@ -543,18 +575,30 @@ class Server(_TAXIIEndpoint):
 
 
 class _HTTPConnection(object):
-    """This library uses the "requests" library, which presents a convenience
+    """This library uses the ``requests`` library, which presents a convenience
     API which hides many network details like actual connection objects.  So
-    this class doesn't represent a traditional "connection" either.  It's a
+    this class doesn't represent a traditional ``connection`` either.  It's a
     sort of approximation: sets of connections (or connection pools) and common
     metadata for a particular server interaction.  You can send requests to
     any hosts via the same instance; hosts/ports are not checked and new
     connection pools pop into existence as needed, but all connections are
     closed when the close() method is called.  So this is intended to be used
     for an independent self-contained interaction.
+
+    Attributes:
+        session (requests.Session): A requests session object.
+
     """
 
     def __init__(self, user=None, password=None, verify=True):
+        """Create a connection session.
+
+        Args:
+            user (str): username for authentication (optional)
+            password (str): password for authentication (optional)
+            verify (bool): validate the entity credentials. (default: True)
+
+        """
         self.session = requests.Session()
         self.session.verify = verify
         if user and password:
@@ -568,6 +612,9 @@ class _HTTPConnection(object):
             accept (str): media type to include in the ``Accept:`` header. This
                 function checks that the ``Content-Type:`` header on the HTTP
                 response matches this media type.
+            params: dictionary or bytes to be sent in the query string for the
+                request. (optional)
+
         """
         headers = {
             'Accept': accept
@@ -589,7 +636,8 @@ class _HTTPConnection(object):
         extra query parameters are merged with any which already exist in the
         URL.
         """
-        resp = self.session.post(url, headers=headers, params=params, json=json)
+        resp = self.session.post(url, headers=headers, params=params,
+                                 json=json)
         resp.raise_for_status()
         return resp.json()
 
@@ -602,7 +650,6 @@ def get_collection_by_id(api_root, coll_id):
     for collection in api_root.collections:
         if collection.id == coll_id:
             return collection
-
     return None
 
 
