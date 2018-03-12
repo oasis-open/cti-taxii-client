@@ -510,7 +510,7 @@ class Server(_TAXIIEndpoint):
 
     """
 
-    def __init__(self, url, user=None, password=None, conn=None):
+    def __init__(self, url, user=None, password=None, verify=True, conn=None):
         """Create a server discovery endpoint.
 
         Args:
@@ -521,7 +521,7 @@ class Server(_TAXIIEndpoint):
                 providing username/password
 
         """
-        super(Server, self).__init__(url, user, password, conn)
+        super(Server, self).__init__(url, user, password, verify, conn)
 
         self._user = user
         self._password = password
