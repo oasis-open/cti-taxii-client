@@ -28,6 +28,11 @@ class AccessError(TAXIIServiceException):
     pass
 
 
+class ValidationError(TAXIIServiceException):
+    """Data validation failed for a property or group of properties"""
+    pass
+
+
 def _format_datetime(dttm):
     """Convert a datetime object into a valid STIX timestamp string.
 
@@ -222,10 +227,40 @@ class Status(_TAXIIEndpoint):
         self.success_count = success_count
         self.failure_count = failure_count
         self.pending_count = pending_count
-        # TODO: validate that len(successes) == success_count, etc.
         self.successes = successes or []
         self.failures = failures or []
         self.pendings = pendings or []
+
+        self._validate_status()
+
+    def _validate_status(self):
+        if len(self.successes) != self.success_count:
+            msg = "Found successes={}, but success_count={} in status '{}'"
+            raise ValidationError(msg.format(self.successes,
+                                             self.success_count,
+                                             self.id))
+
+        if len(self.pendings) != self.pending_count:
+            msg = "Found pendings={}, but pending_count={} in status '{}'"
+            raise ValidationError(msg.format(self.pendings,
+                                             self.pending_count,
+                                             self.id))
+
+        if len(self.failures) != self.failure_count:
+            msg = "Found failures={}, but failure_count={} in status '{}'"
+            raise ValidationError(msg.format(self.failures,
+                                             self.failure_count,
+                                             self.id))
+
+        if (self.success_count + self.pending_count + self.failure_count !=
+                self.total_count):
+            msg = ("(success_count={} + pending_count={} + "
+                   "failure_count={}) != total_count={} in status '{}'")
+            raise ValidationError(msg.format(self.success_count,
+                                             self.pending_count,
+                                             self.failure_count,
+                                             self.total_count,
+                                             self.id))
 
 
 class Collection(_TAXIIEndpoint):
@@ -321,12 +356,18 @@ class Collection(_TAXIIEndpoint):
         if media_types is None:
             media_types = []
         self._id = id
-        # TODO: ensure id doesn't change (or at least matches self.url)
         self._title = title
         self._description = description
         self._can_read = can_read
         self._can_write = can_write
         self._media_types = media_types
+
+        self._validate_collection()
+
+    def _validate_collection(self):
+        if self._id not in self.url:
+            msg = "The collection '{}' does not match the url for queries '{}'"
+            raise ValidationError(msg.format(self._id, self.url))
 
     def _ensure_loaded(self):
         if not self._loaded:
@@ -334,16 +375,17 @@ class Collection(_TAXIIEndpoint):
 
     def _verify_can_read(self):
         if not self.can_read:
-            raise AccessError("Collection '%s' does not allow reading." % self.url)
+            msg = "Collection '{}' does not allow reading."
+            raise AccessError(msg.format(self.url))
 
     def _verify_can_write(self):
         if not self.can_write:
-            raise AccessError("Collection '%s' does not allow writing." % self.url)
+            msg = "Collection '{}' does not allow writing."
+            raise AccessError(msg.format(self.url))
 
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
         self._populate_fields(**response)
-
         self._loaded = True
 
     def get_objects(self, **filter_kwargs):
