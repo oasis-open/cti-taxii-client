@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import datetime
+import json
 import time
 
 import pytz
@@ -338,11 +339,17 @@ class Collection(_TAXIIEndpoint):
             before the timeout, is returned.
         """
         self._verify_can_write()
+
         headers = {
             "Accept": MEDIA_TYPE_TAXII_V20,
             "Content-Type": MEDIA_TYPE_STIX_V20,
         }
-        status_json = self._conn.post(self.objects_url, headers=headers, json=bundle)
+
+        if isinstance(bundle, dict):
+            bundle = json.dumps(bundle, encoding="utf-8")
+
+        status_json = self._conn.post(self.objects_url, headers=headers,
+                                      data=bundle)
 
         status_url = urlparse.urljoin(self.url, "../../status/{}".format(
             status_json["id"]))
@@ -583,13 +590,13 @@ class _HTTPConnection(object):
 
         return resp.json()
 
-    def post(self, url, headers=None, params=None, json=None):
+    def post(self, url, headers=None, params=None, data=None):
         """Send a JSON POST request with the given request headers, additional
         URL query parameters, and the given JSON in the request body.  The
         extra query parameters are merged with any which already exist in the
         URL.
         """
-        resp = self.session.post(url, headers=headers, params=params, json=json)
+        resp = self.session.post(url, headers=headers, params=params, data=data)
         resp.raise_for_status()
         return resp.json()
 
