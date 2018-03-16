@@ -1,7 +1,9 @@
 import datetime
+import json
 
 import pytest
 import responses
+import six
 
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
@@ -354,6 +356,23 @@ def test_add_object_to_collection(writable_collection):
                   status=202, content_type=MEDIA_TYPE_TAXII_V20)
 
     status = writable_collection.add_objects(STIX_BUNDLE)
+
+    assert status.status == 'complete'
+    assert status.total_count == 1
+    assert status.success_count == 1
+    assert len(status.successes) == 1
+    assert status.failure_count == 0
+    assert status.pending_count == 0
+
+
+@responses.activate
+def test_add_object_to_collection_dict(writable_collection):
+    responses.add(responses.POST, ADD_OBJECTS_URL, ADD_OBJECTS_RESPONSE,
+                  status=202, content_type=MEDIA_TYPE_TAXII_V20)
+
+    dict_bundle = json.load(six.StringIO(STIX_BUNDLE))
+
+    status = writable_collection.add_objects(dict_bundle)
 
     assert status.status == 'complete'
     assert status.total_count == 1
