@@ -541,7 +541,7 @@ class Server(_TAXIIEndpoint):
         self._description = response.get('description')
         self._contact = response.get('contact')
         roots = response.get('api_roots', [])
-        self._api_roots = [ApiRoot(url, self._user, self._password)
+        self._api_roots = [ApiRoot(url, conn=self._conn)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.0 spec says that the
