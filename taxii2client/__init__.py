@@ -346,7 +346,10 @@ class Collection(_TAXIIEndpoint):
         }
 
         if isinstance(bundle, dict):
-            bundle = json.dumps(bundle, encoding="utf-8")
+            if six.PY2:
+                bundle = json.dumps(bundle, encoding="utf-8")
+            else:
+                bundle = json.dumps(bundle)
 
         status_json = self._conn.post(self.objects_url, headers=headers,
                                       data=bundle)
