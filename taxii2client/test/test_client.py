@@ -4,6 +4,7 @@ import json
 
 import pytest
 import responses
+import six
 
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
@@ -370,7 +371,7 @@ def test_add_object_to_collection_dict(writable_collection):
     responses.add(responses.POST, ADD_OBJECTS_URL, ADD_OBJECTS_RESPONSE,
                   status=202, content_type=MEDIA_TYPE_TAXII_V20)
 
-    dict_bundle = json.load(io.StringIO(STIX_BUNDLE))
+    dict_bundle = json.load(six.StringIO(STIX_BUNDLE))
 
     status = writable_collection.add_objects(dict_bundle)
 
