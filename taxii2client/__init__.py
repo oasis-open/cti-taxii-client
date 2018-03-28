@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import datetime
+import json
 import time
 
 import pytz
@@ -447,8 +448,14 @@ class Collection(_TAXIIEndpoint):
             "Content-Type": MEDIA_TYPE_STIX_V20,
         }
 
+        if isinstance(bundle, dict):
+            if six.PY2:
+                bundle = json.dumps(bundle, encoding="utf-8")
+            else:
+                bundle = json.dumps(bundle)
+
         status_json = self._conn.post(self.objects_url, headers=headers,
-                                      json=bundle)
+                                      data=bundle)
 
         status_url = urlparse.urljoin(
             self.url,
@@ -713,14 +720,13 @@ class _HTTPConnection(object):
 
         return resp.json()
 
-    def post(self, url, headers=None, params=None, json=None):
+    def post(self, url, headers=None, params=None, data=None):
         """Send a JSON POST request with the given request headers, additional
         URL query parameters, and the given JSON in the request body.  The
         extra query parameters are merged with any which already exist in the
         URL.
         """
-        resp = self.session.post(url, headers=headers, params=params,
-                                 json=json)
+        resp = self.session.post(url, headers=headers, params=params, data=data)
         resp.raise_for_status()
         return resp.json()
 
