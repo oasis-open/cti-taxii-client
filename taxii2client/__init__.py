@@ -54,12 +54,12 @@ def _format_datetime(dttm):
     ts = zoned.strftime("%Y-%m-%dT%H:%M:%S")
     ms = zoned.strftime("%f")
     precision = getattr(dttm, "precision", None)
-    if precision == 'second':
+    if precision == "second":
         pass  # Already precise to the second
     elif precision == "millisecond":
-        ts = ts + '.' + ms[:3]
+        ts = ts + "." + ms[:3]
     elif zoned.microsecond > 0:
-        ts = ts + '.' + ms.rstrip("0")
+        ts = ts + "." + ms.rstrip("0")
     return ts + "Z"
 
 
@@ -110,8 +110,8 @@ def _filter_kwargs_to_query_params(filter_kwargs):
 
         elif kwarg == "added_after":
             if len(arglist) > 1:
-                raise InvalidArgumentsError('No more than one value for filter'
-                                            ' "added_after" may be given')
+                raise InvalidArgumentsError("No more than one value for filter"
+                                            " 'added_after' may be given")
 
             query_params["added_after"] = ",".join(
                 _ensure_datetime_to_string(val) for val in arglist
@@ -130,7 +130,7 @@ class _TAXIIEndpoint(object):
     resources are released.
 
     """
-    def __init__(self, url, user=None, password=None, verify=True, conn=None):
+    def __init__(self, url, conn=None, user=None, password=None, verify=True):
         """Create a TAXII endpoint.
 
         Args:
@@ -173,7 +173,7 @@ class Status(_TAXIIEndpoint):
     # than just getting them returned from Collection.add_objects(), and there
     # aren't other endpoints to call on the Status object.
 
-    def __init__(self, url, user=None, password=None, verify=True, conn=None,
+    def __init__(self, url, conn=None, user=None, password=None, verify=True,
                  **kwargs):
         """Create an API root resource endpoint.
 
@@ -185,7 +185,7 @@ class Status(_TAXIIEndpoint):
                 to providing username/password
 
         """
-        super(Status, self).__init__(url, user, password, verify, conn)
+        super(Status, self).__init__(url, conn, user, password, verify)
         if kwargs:
             self._populate_fields(**kwargs)
         else:
@@ -284,7 +284,7 @@ class Collection(_TAXIIEndpoint):
 
     """
 
-    def __init__(self, url, user=None, password=None, verify=True, conn=None,
+    def __init__(self, url, conn=None, user=None, password=None, verify=True,
                  **kwargs):
         """
         Initialize a new Collection.  Either user/password or conn may be
@@ -306,7 +306,7 @@ class Collection(_TAXIIEndpoint):
 
         """
 
-        super(Collection, self).__init__(url, user, password, verify, conn)
+        super(Collection, self).__init__(url, conn, user, password, verify)
 
         self._loaded = False
 
@@ -350,7 +350,7 @@ class Collection(_TAXIIEndpoint):
 
     @property
     def objects_url(self):
-        return self.url + 'objects/'
+        return self.url + "objects/"
 
     def _populate_fields(self, id=None, title=None, description=None,
                          can_read=None, can_write=None, media_types=None):
@@ -399,7 +399,7 @@ class Collection(_TAXIIEndpoint):
     def get_object(self, obj_id, version=None):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
-        url = self.objects_url + str(obj_id) + '/'
+        url = self.objects_url + str(obj_id) + "/"
         query_params = None
         if version:
             query_params = _filter_kwargs_to_query_params({"version": version})
@@ -475,7 +475,7 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.url + 'manifest/',
+        return self._conn.get(self.url + "manifest/",
                               accept=MEDIA_TYPE_TAXII_V20,
                               params=query_params)
 
@@ -497,7 +497,7 @@ class ApiRoot(_TAXIIEndpoint):
 
     """
 
-    def __init__(self, url, user=None, password=None, verify=True, conn=None):
+    def __init__(self, url, conn=None, user=None, password=None, verify=True):
         """Create an API root resource endpoint.
 
         Args:
@@ -508,7 +508,7 @@ class ApiRoot(_TAXIIEndpoint):
                 to providing username/password
 
         """
-        super(ApiRoot, self).__init__(url, user, password, verify, conn)
+        super(ApiRoot, self).__init__(url, conn, user, password, verify)
 
         self._loaded_collections = False
         self._loaded_information = False
@@ -555,10 +555,10 @@ class ApiRoot(_TAXIIEndpoint):
         """
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
-        self._title = response['title']
-        self._description = response['description']
-        self._versions = response['versions']
-        self._max_content_length = response['max_content_length']
+        self._title = response["title"]
+        self._description = response["description"]
+        self._versions = response["versions"]
+        self._max_content_length = response["max_content_length"]
 
         self._loaded_information = True
 
@@ -567,12 +567,12 @@ class ApiRoot(_TAXIIEndpoint):
 
         This invokes the ``Get Collections`` endpoint.
         """
-        url = self.url + 'collections/'
+        url = self.url + "collections/"
         response = self._conn.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._collections = []
-        for item in response['collections']:
-            collection_url = url + item['id'] + "/"
+        for item in response["collections"]:
+            collection_url = url + item["id"] + "/"
             collection = Collection(collection_url, conn=self._conn, **item)
             self._collections.append(collection)
 
@@ -600,7 +600,7 @@ class Server(_TAXIIEndpoint):
 
     """
 
-    def __init__(self, url, user=None, password=None, verify=True, conn=None):
+    def __init__(self, url, conn=None, user=None, password=None, verify=True):
         """Create a server discovery endpoint.
 
         Args:
@@ -611,7 +611,7 @@ class Server(_TAXIIEndpoint):
                 to providing username/password
 
         """
-        super(Server, self).__init__(url, user, password, verify, conn)
+        super(Server, self).__init__(url, conn, user, password, verify)
 
         self._user = user
         self._password = password
@@ -649,17 +649,17 @@ class Server(_TAXIIEndpoint):
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
-        self._title = response['title']
-        self._description = response.get('description')
-        self._contact = response.get('contact')
-        roots = response.get('api_roots', [])
+        self._title = response["title"]
+        self._description = response.get("description")
+        self._contact = response.get("contact")
+        roots = response.get("api_roots", [])
         self._api_roots = [ApiRoot(url, self._user, self._password)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.0 spec says that the
         # `default` API Root MUST be an item in `api_roots`.
         root_dict = dict(zip(roots, self._api_roots))
-        self._default = root_dict.get(response.get('default'))
+        self._default = root_dict.get(response.get("default"))
 
         self._loaded = True
 
@@ -707,13 +707,13 @@ class _HTTPConnection(object):
 
         """
         headers = {
-            'Accept': accept
+            "Accept": accept
         }
         resp = self.session.get(url, headers=headers, params=params)
 
         resp.raise_for_status()
 
-        content_type = resp.headers['Content-Type']
+        content_type = resp.headers["Content-Type"]
         if not content_type.startswith(accept):
             msg = "Unexpected Response Content-Type: {}"
             raise TAXIIServiceException(msg.format(content_type))
