@@ -8,23 +8,24 @@ import six
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
     Collection, InvalidArgumentsError, Server, TAXIIServiceException,
-    ValidationError, _filter_kwargs_to_query_params
+    ValidationError, _TAXIIEndpoint, _HTTPConnection, get_collection_by_id,
+    _filter_kwargs_to_query_params
 )
 
-TAXII_SERVER = 'example.com'
-DISCOVERY_URL = 'https://{}/taxii/'.format(TAXII_SERVER)
-API_ROOT_URL = 'https://{}/api1/'.format(TAXII_SERVER)
-COLLECTIONS_URL = API_ROOT_URL + 'collections/'
-COLLECTION_URL = COLLECTIONS_URL + '91a7b528-80eb-42ed-a74d-c6fbd5a26116/'
-OBJECTS_URL = COLLECTION_URL + 'objects/'
+TAXII_SERVER = "example.com"
+DISCOVERY_URL = "https://{}/taxii/".format(TAXII_SERVER)
+API_ROOT_URL = "https://{}/api1/".format(TAXII_SERVER)
+COLLECTIONS_URL = API_ROOT_URL + "collections/"
+COLLECTION_URL = COLLECTIONS_URL + "91a7b528-80eb-42ed-a74d-c6fbd5a26116/"
+OBJECTS_URL = COLLECTION_URL + "objects/"
 GET_OBJECTS_URL = OBJECTS_URL
 ADD_OBJECTS_URL = OBJECTS_URL
-WRITABLE_COLLECTION_URL = COLLECTIONS_URL + 'e278b87e-0f9b-4c63-a34c-c8f0b3e91acb/'
-ADD_WRITABLE_OBJECTS_URL = WRITABLE_COLLECTION_URL + 'objects/'
-GET_OBJECT_URL = OBJECTS_URL + 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61/'
-MANIFEST_URL = COLLECTION_URL + 'manifest/'
-STATUS_ID = '2d086da7-4bdc-4f91-900e-d77486753710'
-STATUS_URL = API_ROOT_URL + 'status/' + STATUS_ID + '/'
+WRITABLE_COLLECTION_URL = COLLECTIONS_URL + "e278b87e-0f9b-4c63-a34c-c8f0b3e91acb/"
+ADD_WRITABLE_OBJECTS_URL = WRITABLE_COLLECTION_URL + "objects/"
+GET_OBJECT_URL = OBJECTS_URL + "indicator--252c7c11-daf2-42bd-843b-be65edca9f61/"
+MANIFEST_URL = COLLECTION_URL + "manifest/"
+STATUS_ID = "2d086da7-4bdc-4f91-900e-d77486753710"
+STATUS_URL = API_ROOT_URL + "status/" + STATUS_ID + "/"
 
 # These responses are provided as examples in the TAXII 2.0 specification.
 DISCOVERY_RESPONSE = """{
@@ -189,7 +190,7 @@ STATUS_RESPONSE = """{
 @pytest.fixture
 def server():
     """Default server object for example.com"""
-    return Server(DISCOVERY_URL)
+    return Server(DISCOVERY_URL, user="foo", password="bar")
 
 
 @pytest.fixture
@@ -290,7 +291,7 @@ def test_api_root(api_root):
     assert api_root.title == "Malware Research Group"
     assert api_root._loaded_information is True
     assert api_root.description == "A trust group setup for malware researchers"
-    assert api_root.versions == ['taxii-2.0']
+    assert api_root.versions == ["taxii-2.0"]
     assert api_root.max_content_length == 9765625
 
 
@@ -306,7 +307,7 @@ def test_api_root_collections(api_root):
     coll = api_root.collections[0]
     # A collection populated from an API Root is automatically loaded
     assert coll._loaded is True
-    assert coll.id == '91a7b528-80eb-42ed-a74d-c6fbd5a26116'
+    assert coll.id == "91a7b528-80eb-42ed-a74d-c6fbd5a26116"
     assert coll.url == COLLECTION_URL
     assert coll.title == "High Value Indicator Collection"
     assert coll.description == "This data collection is for collecting high value IOCs"
@@ -316,9 +317,36 @@ def test_api_root_collections(api_root):
 
 
 @responses.activate
+def test_get_collection_by_id_exists(api_root):
+    responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE, status=200,
+                  content_type=MEDIA_TYPE_TAXII_V20)
+
+    coll = get_collection_by_id(api_root, "91a7b528-80eb-42ed-a74d-c6fbd5a26116")
+
+    assert coll
+    assert coll._loaded is True
+    assert coll.id == "91a7b528-80eb-42ed-a74d-c6fbd5a26116"
+    assert coll.url == COLLECTION_URL
+    assert coll.title == "High Value Indicator Collection"
+    assert coll.description == "This data collection is for collecting high value IOCs"
+    assert coll.can_read is True
+    assert coll.can_write is False
+    assert coll.media_types == [MEDIA_TYPE_STIX_V20]
+
+
+@responses.activate
+def test_get_collection_by_id_not_present(api_root):
+    responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE, status=200,
+                  content_type=MEDIA_TYPE_TAXII_V20)
+
+    coll = get_collection_by_id(api_root, "12345678-1234-1234-1234-123456789012")
+    assert coll is None
+
+
+@responses.activate
 def test_collection(collection):
     assert collection._loaded is False
-    assert collection.id == '91a7b528-80eb-42ed-a74d-c6fbd5a26116'
+    assert collection.id == "91a7b528-80eb-42ed-a74d-c6fbd5a26116"
     assert collection._loaded is True
     assert collection.url == COLLECTION_URL
     assert collection.title == "High Value Indicator Collection"
@@ -340,8 +368,8 @@ def test_get_collection_objects(collection):
 
     response = collection.get_objects()
 
-    assert response['spec_version'] == '2.0'
-    assert len(response['objects']) == 1
+    assert response["spec_version"] == "2.0"
+    assert len(response["objects"]) == 1
 
 
 @responses.activate
@@ -349,9 +377,9 @@ def test_get_object(collection):
     responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
                   status=200, content_type=MEDIA_TYPE_STIX_V20)
 
-    response = collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
-    indicator = response['objects'][0]
-    assert indicator['id'] == 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61'
+    response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
+    indicator = response["objects"][0]
+    assert indicator["id"] == "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
 
 
 @responses.activate
@@ -368,7 +396,7 @@ def test_add_object_to_collection(writable_collection):
 
     status = writable_collection.add_objects(STIX_BUNDLE)
 
-    assert status.status == 'complete'
+    assert status.status == "complete"
     assert status.total_count == 1
     assert status.success_count == 1
     assert len(status.successes) == 1
@@ -385,7 +413,7 @@ def test_add_object_to_collection_dict(writable_collection):
 
     status = writable_collection.add_objects(dict_bundle)
 
-    assert status.status == 'complete'
+    assert status.status == "complete"
     assert status.total_count == 1
     assert status.success_count == 1
     assert len(status.successes) == 1
@@ -422,11 +450,11 @@ def test_get_manifest(collection):
 
     response = collection.get_manifest()
 
-    assert len(response['objects']) == 2
-    obj = response['objects'][0]
-    assert obj['id'] == 'indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b'
-    assert len(obj['versions']) == 2
-    assert obj['media_types'][0] == MEDIA_TYPE_STIX_V20
+    assert len(response["objects"]) == 2
+    obj = response["objects"][0]
+    assert obj["id"] == "indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b"
+    assert len(obj["versions"]) == 2
+    assert obj["media_types"][0] == MEDIA_TYPE_STIX_V20
 
 
 @responses.activate
@@ -450,9 +478,9 @@ def test_content_type_valid(collection):
     responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
                   status=200, content_type="%s; charset=utf-8" % MEDIA_TYPE_STIX_V20)
 
-    response = collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
-    indicator = response['objects'][0]
-    assert indicator['id'] == 'indicator--252c7c11-daf2-42bd-843b-be65edca9f61'
+    response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
+    indicator = response["objects"][0]
+    assert indicator["id"] == "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
 
 
 @responses.activate
@@ -461,7 +489,7 @@ def test_content_type_invalid(collection):
                   status=200, content_type="taxii")
 
     with pytest.raises(TAXIIServiceException) as excinfo:
-        collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+        collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     assert "Unexpected Response Content-Type" in str(excinfo.value)
 
 
@@ -525,3 +553,13 @@ def test_filter_combo():
 def test_params_filter_unknown():
     params = _filter_kwargs_to_query_params({"foo": "bar"})
     assert params == {"match[foo]": "bar"}
+
+
+def test_taxii_endpoint_raises_exception():
+    """Test exception is raised when conn and (user or pass) is provided"""
+    conn = _HTTPConnection(user="foo", password="bar", verify=False)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint("https://example.com/api1/collections/", conn, "other", "test")
+
+    assert "A connection and user/password may not both be provided." in str(excinfo.value)
