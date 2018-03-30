@@ -8,8 +8,8 @@ import six
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
     Collection, InvalidArgumentsError, Server, TAXIIServiceException,
-    ValidationError, _TAXIIEndpoint, _HTTPConnection, get_collection_by_id,
-    _filter_kwargs_to_query_params
+    ValidationError, _filter_kwargs_to_query_params, _HTTPConnection,
+    _TAXIIEndpoint, get_collection_by_id
 )
 
 TAXII_SERVER = "example.com"
