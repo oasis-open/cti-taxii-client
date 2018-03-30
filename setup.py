@@ -4,11 +4,12 @@ import os.path
 
 from setuptools import find_packages, setup
 
-here = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VERSION_FILE = os.path.join(BASE_DIR, 'taxii2client', 'version.py')
 
 
 def get_version():
-    with open('taxii2client/version.py', encoding="utf-8") as f:
+    with open(VERSION_FILE) as f:
         for line in f.readlines():
             if line.startswith("__version__"):
                 version = line.split()[-1].strip('"')
@@ -16,9 +17,8 @@ def get_version():
         raise AttributeError("Package does not have a __version__")
 
 
-with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open('README.rst')as f:
     long_description = f.read()
-
 
 setup(
     name='taxii2-client',
