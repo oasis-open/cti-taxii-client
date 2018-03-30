@@ -615,6 +615,7 @@ class Server(_TAXIIEndpoint):
 
         self._user = user
         self._password = password
+        self._verify = verify
         self._loaded = False
 
     @property
@@ -649,11 +650,12 @@ class Server(_TAXIIEndpoint):
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
-        self._title = response["title"]
+        self._title = response.get("title")
         self._description = response.get("description")
         self._contact = response.get("contact")
         roots = response.get("api_roots", [])
-        self._api_roots = [ApiRoot(url, self._user, self._password)
+        self._api_roots = [ApiRoot(url, self._conn, self._user, self._password,
+                                   self._verify)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.0 spec says that the
