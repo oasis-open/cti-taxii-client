@@ -1,0 +1,10 @@
+Version 0.2.0
+2017-11-07
+- Filter keyword arguments to query params
+- Add datetime formatting
+- Improve README documentation
+- Improve code coverage/testing
+
+Version 0.1.0
+2017-11-07
+- Initial release
