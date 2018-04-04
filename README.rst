@@ -52,7 +52,7 @@ so it need not be supplied explicitly when requesting services.
 .. code:: python
 
     from taxii2client import Server
-    server = Server('https://example.com/taxii/', 'user_id', 'user_password')
+    server = Server('https://example.com/taxii/', user='user_id', password='user_password')
 
 Once you have instantiated a ``Server`` object, you can get all
 metadata about
