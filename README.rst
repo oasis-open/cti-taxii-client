@@ -52,8 +52,8 @@ so it need not be supplied explicitly when requesting services.
 .. code:: python
 
     from taxii2client import Server
-    server = Server('https://example.com/taxii/', 'user_id',
-    'user_password')
+    server = Server('https://example.com/taxii/', user='user_id',
+    password='user_password')
 
 Once you have instantiated a ``Server`` object, you can get all
 metadata about
@@ -103,10 +103,8 @@ A ``Collection`` can also be instantiated directly:
 
   from taxii2client import Collection
   collection =
-  Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-
-  a74d-c6fbd5a26116')
-  collection.get_object('indicator--252c7c11-daf2-42bd-843b-
-  be65edca9f61')
+  Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
+  collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
 
 In addition to the object-specific properties and methods, all classes
 have a
