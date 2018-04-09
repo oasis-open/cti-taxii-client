@@ -328,6 +328,24 @@ def test_discovery_with_no_default(server):
 
 
 @responses.activate
+def test_discovery_with_no_title(server):
+    response = """{
+      "description": "This TAXII Server contains a listing of...",
+      "contact": "string containing contact information",
+      "api_roots": [
+        "https://example.com/api1/",
+        "https://example.com/api2/",
+        "https://example.net/trustgroup1/"
+      ]
+    }"""
+    set_discovery_response(response)
+    with pytest.raises(ValidationError) as excinfo:
+        server.refresh()
+
+    assert "No 'title' in Server Discovery for request 'https://example.com/taxii/'" == str(excinfo.value)
+
+
+@responses.activate
 def test_api_root_no_title(api_root):
     set_api_root_response("""{
       "description": "A trust group setup for malware researchers",
