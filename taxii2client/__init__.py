@@ -409,7 +409,8 @@ class Collection(_TAXIIEndpoint):
                               params=query_params)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
-                    timeout=60):
+                    timeout=60, accept=MEDIA_TYPE_TAXII_V20,
+                    content_type=MEDIA_TYPE_STIX_V20):
         """Implement the ``Add Objects`` endpoint (section 5.4)
 
         Add objects to the collection.  This may be performed either
@@ -427,10 +428,13 @@ class Collection(_TAXIIEndpoint):
                 parsed into native Python)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
-            poll_interval: If waiting for completion, how often to poll
+            poll_interval (int): If waiting for completion, how often to poll
                 the status service (seconds)
-            timeout: If waiting for completion, how long to poll until giving
-                up (seconds).  Use <= 0 to wait forever
+            timeout (int): If waiting for completion, how long to poll until
+                giving up (seconds).  Use <= 0 to wait forever
+            accept (str): media type to include in the ``Accept:`` header.
+            content_type (str): media type to include in the ``Content-Type:``
+                header.
 
         Returns:
             If ``wait_for_completion`` is False, a Status object corresponding
@@ -446,8 +450,8 @@ class Collection(_TAXIIEndpoint):
         self._verify_can_write()
 
         headers = {
-            "Accept": MEDIA_TYPE_TAXII_V20,
-            "Content-Type": MEDIA_TYPE_STIX_V20,
+            "Accept": accept,
+            "Content-Type": content_type,
         }
 
         if isinstance(bundle, dict):
