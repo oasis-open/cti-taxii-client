@@ -490,7 +490,8 @@ def test_content_type_invalid(collection):
 
     with pytest.raises(TAXIIServiceException) as excinfo:
         collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
-    assert "Unexpected Response Content-Type" in str(excinfo.value)
+    assert ("Unexpected Response. Got Content-Type: 'taxii' for "
+            "Accept: 'application/vnd.oasis.stix+json; version=2.0'") in str(excinfo.value)
 
 
 def test_url_filter_type():
@@ -563,3 +564,30 @@ def test_taxii_endpoint_raises_exception():
         _TAXIIEndpoint("https://example.com/api1/collections/", conn, "other", "test")
 
     assert "A connection and user/password may not both be provided." in str(excinfo.value)
+
+
+@responses.activate
+def test_valid_content_type_for_connection():
+    """The server responded with charset=utf-8, but the media types are correct
+    and first."""
+    responses.add(responses.GET, COLLECTION_URL, COLLECTIONS_RESPONSE,
+                  status=200,
+                  content_type=MEDIA_TYPE_TAXII_V20 + "; charset=utf-8")
+
+    conn = _HTTPConnection(user="foo", password="bar", verify=False)
+    conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/", MEDIA_TYPE_TAXII_V20, None)
+
+
+@responses.activate
+def test_invalid_content_type_for_connection():
+    responses.add(responses.GET, COLLECTION_URL, COLLECTIONS_RESPONSE,
+                  status=200,
+                  content_type=MEDIA_TYPE_TAXII_V20)
+
+    with pytest.raises(TAXIIServiceException) as excinfo:
+        conn = _HTTPConnection(user="foo", password="bar", verify=False)
+        conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/", MEDIA_TYPE_TAXII_V20 + "; charset=utf-8", None)
+
+    assert ("Unexpected Response. Got Content-Type: 'application/vnd.oasis.taxii+json; "
+            "version=2.0' for Accept: 'application/vnd.oasis.taxii+json; version=2.0; "
+            "charset=utf-8'") == str(excinfo.value)

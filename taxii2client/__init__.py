@@ -699,20 +699,23 @@ class _HTTPConnection(object):
         self.session.verify = verify
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
-    
+
     def valid_content_type(self, content_type, accept):
         """Check that the server is returning a valid Content-Type
 
         Args:
-            content_type (str): "Content-Type" header value
+            content_type (str): ``Content-Type:`` header value
             accept (str): media type to include in the ``Accept:`` header.
-        
+
         """
         accept_tokens = accept.replace(' ', '').split(';')
         content_type_tokens = content_type.replace(' ', '').split(';')
 
-        return (all(elem in content_type_tokens for elem in accept_tokens) and (content_type_tokens[0] == 'application/vnd.oasis.taxii+json' 
-            or content_type_tokens[0] == 'application/vnd.oasis.stix+json'))
+        return (
+            all(elem in content_type_tokens for elem in accept_tokens) and
+            (content_type_tokens[0] == 'application/vnd.oasis.taxii+json' or
+             content_type_tokens[0] == 'application/vnd.oasis.stix+json')
+        )
 
     def get(self, url, accept, params=None):
         """Perform an HTTP GET, using the saved requests.Session and auth info.
@@ -736,8 +739,8 @@ class _HTTPConnection(object):
         content_type = resp.headers["Content-Type"]
 
         if not self.valid_content_type(content_type=content_type, accept=accept):
-            msg = "Unexpected Response Content-Type: {}"
-            raise TAXIIServiceException(msg.format(content_type))
+            msg = "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'"
+            raise TAXIIServiceException(msg.format(content_type, accept))
 
         return resp.json()
 
