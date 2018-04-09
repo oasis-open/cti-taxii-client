@@ -200,7 +200,7 @@ class Status(_TAXIIEndpoint):
 
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
-        self._populate_fields(**response)
+
 
     def wait_until_final(self, poll_interval=1, timeout=60):
         """It will poll the URL to grab the latest status resource in a given
@@ -237,6 +237,8 @@ class Status(_TAXIIEndpoint):
         self._validate_status()
 
     def _validate_status(self):
+        """Validates Status information. Raises errors for required
+        properties."""
         if len(self.successes) != self.success_count:
             msg = "Found successes={}, but success_count={} in status '{}'"
             raise ValidationError(msg.format(self.successes,
@@ -368,6 +370,8 @@ class Collection(_TAXIIEndpoint):
         self._validate_collection()
 
     def _validate_collection(self):
+        """Validates Collection information. Raises errors for required
+        properties."""
         if self._id not in self.url:
             msg = "The collection '{}' does not match the url for queries '{}'"
             raise ValidationError(msg.format(self._id, self.url))
@@ -545,6 +549,19 @@ class ApiRoot(_TAXIIEndpoint):
         if not self._loaded_information:
             self.refresh_information()
 
+    def _validate_api_root(self):
+        """Validates API Root information. Raises errors for required
+        properties."""
+        if not self._title:
+            msg = "No 'title' in API Root for request '{}'"
+            raise ValidationError(msg.format(self.url))
+        if not self._versions:
+            msg = "No 'versions' in API Root for request '{}'"
+            raise ValidationError(msg.format(self.url))
+        if self._max_content_length < 0:
+            msg = "No 'max_content_length' in API Root for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
     def refresh(self):
         """Update the API Root's information and list of Collections"""
         self.refresh_information()
@@ -557,11 +574,12 @@ class ApiRoot(_TAXIIEndpoint):
         """
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
-        self._title = response["title"]
-        self._description = response["description"]
-        self._versions = response["versions"]
-        self._max_content_length = response["max_content_length"]
+        self._title = response.get("title", "")
+        self._description = response.get("description", "")
+        self._versions = response.get("versions", [])
+        self._max_content_length = response.get("max_content_length", -1)
 
+        self._validate_api_root()
         self._loaded_information = True
 
     def refresh_collections(self):
@@ -573,7 +591,7 @@ class ApiRoot(_TAXIIEndpoint):
         response = self._conn.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._collections = []
-        for item in response["collections"]:
+        for item in response.get("collections", []):
             collection_url = url + item["id"] + "/"
             collection = Collection(collection_url, conn=self._conn, **item)
             self._collections.append(collection)
@@ -649,12 +667,19 @@ class Server(_TAXIIEndpoint):
         if not self._loaded:
             self.refresh()
 
+    def _validate_server(self):
+        """Validates server information. Raises errors for required properties.
+        """
+        if not self._title:
+            msg = "No 'title' in Server Discovery for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
-        self._title = response.get("title")
-        self._description = response.get("description")
-        self._contact = response.get("contact")
+        self._title = response.get("title", "")
+        self._description = response.get("description", "")
+        self._contact = response.get("contact", "")
         roots = response.get("api_roots", [])
         self._api_roots = [ApiRoot(url,
                                    user=self._user,
@@ -666,6 +691,7 @@ class Server(_TAXIIEndpoint):
         # `default` API Root MUST be an item in `api_roots`.
         root_dict = dict(zip(roots, self._api_roots))
         self._default = root_dict.get(response.get("default"))
+        self._validate_server()
 
         self._loaded = True
 
