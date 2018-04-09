@@ -200,7 +200,7 @@ class Status(_TAXIIEndpoint):
 
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
-
+        self._populate_fields(**response)
 
     def wait_until_final(self, poll_interval=1, timeout=60):
         """It will poll the URL to grab the latest status resource in a given
@@ -220,25 +220,50 @@ class Status(_TAXIIEndpoint):
             self.refresh()
             elapsed = time.time() - start_time
 
-    def _populate_fields(self, id, status, total_count, success_count,
-                         failure_count, pending_count, request_timestamp=None,
+    def _populate_fields(self, id=None, status=None, total_count=None,
+                         success_count=None, failure_count=None,
+                         pending_count=None, request_timestamp=None,
                          successes=None, failures=None, pendings=None):
-        self.id = id
-        self.status = status
-        self.request_timestamp = request_timestamp
-        self.total_count = total_count
-        self.success_count = success_count
-        self.failure_count = failure_count
-        self.pending_count = pending_count
-        self.successes = successes or []
-        self.failures = failures or []
-        self.pendings = pendings or []
+        self.id = id  # required
+        self.status = status  # required
+        self.request_timestamp = request_timestamp  # optional
+        self.total_count = total_count  # required
+        self.success_count = success_count  # required
+        self.failure_count = failure_count  # required
+        self.pending_count = pending_count  # required
+        self.successes = successes or []  # optional
+        self.failures = failures or []  # optional
+        self.pendings = pendings or []  # optional
 
         self._validate_status()
 
     def _validate_status(self):
         """Validates Status information. Raises errors for required
         properties."""
+        if not self.id:
+            msg = "No 'id' in Status for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if not self.status:
+            msg = "No 'status' in Status for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if self.total_count is None:
+            msg = "No 'total_count' in Status for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if self.success_count is None:
+            msg = "No 'success_count' in Status for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if self.failure_count is None:
+            msg = "No 'failure_count' in Status for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if self.pending_count is None:
+            msg = "No 'pending_count' in Status for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
         if len(self.successes) != self.success_count:
             msg = "Found successes={}, but success_count={} in status '{}'"
             raise ValidationError(msg.format(self.successes,
@@ -358,20 +383,34 @@ class Collection(_TAXIIEndpoint):
 
     def _populate_fields(self, id=None, title=None, description=None,
                          can_read=None, can_write=None, media_types=None):
-        if media_types is None:
-            media_types = []
-        self._id = id
-        self._title = title
-        self._description = description
-        self._can_read = can_read
-        self._can_write = can_write
-        self._media_types = media_types
+        self._id = id  # required
+        self._title = title  # required
+        self._description = description  # optional
+        self._can_read = can_read  # required
+        self._can_write = can_write  # required
+        self._media_types = media_types or []  # optional
 
         self._validate_collection()
 
     def _validate_collection(self):
         """Validates Collection information. Raises errors for required
         properties."""
+        if not self._id:
+            msg = "No 'id' in Collection for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if not self._title:
+            msg = "No 'title' in Collection for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if self._can_read is None:
+            msg = "No 'can_read' in Collection for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
+        if self._can_write is None:
+            msg = "No 'can_write' in Collection for request '{}'"
+            raise ValidationError(msg.format(self.url))
+
         if self._id not in self.url:
             msg = "The collection '{}' does not match the url for queries '{}'"
             raise ValidationError(msg.format(self._id, self.url))
@@ -555,10 +594,12 @@ class ApiRoot(_TAXIIEndpoint):
         if not self._title:
             msg = "No 'title' in API Root for request '{}'"
             raise ValidationError(msg.format(self.url))
+
         if not self._versions:
             msg = "No 'versions' in API Root for request '{}'"
             raise ValidationError(msg.format(self.url))
-        if self._max_content_length < 0:
+
+        if self._max_content_length is None:
             msg = "No 'max_content_length' in API Root for request '{}'"
             raise ValidationError(msg.format(self.url))
 
@@ -574,10 +615,10 @@ class ApiRoot(_TAXIIEndpoint):
         """
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
-        self._title = response.get("title", "")
-        self._description = response.get("description", "")
-        self._versions = response.get("versions", [])
-        self._max_content_length = response.get("max_content_length", -1)
+        self._title = response.get("title")  # required
+        self._description = response.get("description")  # optional
+        self._versions = response.get("versions", [])  # required
+        self._max_content_length = response.get("max_content_length")  # required
 
         self._validate_api_root()
         self._loaded_information = True
@@ -591,7 +632,7 @@ class ApiRoot(_TAXIIEndpoint):
         response = self._conn.get(url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._collections = []
-        for item in response.get("collections", []):
+        for item in response.get("collections", []):  # optional
             collection_url = url + item["id"] + "/"
             collection = Collection(collection_url, conn=self._conn, **item)
             self._collections.append(collection)
@@ -600,8 +641,8 @@ class ApiRoot(_TAXIIEndpoint):
 
     def get_status(self, status_id):
         status_url = self.url + "status/" + status_id + "/"
-        info = self._conn.get(status_url, accept=MEDIA_TYPE_TAXII_V20)
-        return Status(status_url, conn=self._conn, **info)
+        response = self._conn.get(status_url, accept=MEDIA_TYPE_TAXII_V20)
+        return Status(status_url, conn=self._conn, **response)
 
 
 class Server(_TAXIIEndpoint):
@@ -677,10 +718,10 @@ class Server(_TAXIIEndpoint):
     def refresh(self):
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
-        self._title = response.get("title", "")
-        self._description = response.get("description", "")
-        self._contact = response.get("contact", "")
-        roots = response.get("api_roots", [])
+        self._title = response.get("title")  # required
+        self._description = response.get("description")  # optional
+        self._contact = response.get("contact")  # optional
+        roots = response.get("api_roots", [])  # optional
         self._api_roots = [ApiRoot(url,
                                    user=self._user,
                                    password=self._password,
@@ -690,7 +731,7 @@ class Server(_TAXIIEndpoint):
         # rather than creating a duplicate. The TAXII 2.0 spec says that the
         # `default` API Root MUST be an item in `api_roots`.
         root_dict = dict(zip(roots, self._api_roots))
-        self._default = root_dict.get(response.get("default"))
+        self._default = root_dict.get(response.get("default"))  # optional
         self._validate_server()
 
         self._loaded = True
