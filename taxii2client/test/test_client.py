@@ -7,7 +7,7 @@ import six
 
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
-    Collection, InvalidArgumentsError, Server, TAXIIServiceException,
+    Collection, InvalidArgumentsError, Server, Status, TAXIIServiceException,
     ValidationError, _filter_kwargs_to_query_params, _HTTPConnection,
     _TAXIIEndpoint, get_collection_by_id
 )
@@ -188,6 +188,46 @@ STATUS_RESPONSE = """{
 
 
 @pytest.fixture
+def status_dict():
+    return {
+        "id": "2d086da7-4bdc-4f91-900e-d77486753710",
+        "status": "pending",
+        "request_timestamp": "2016-11-02T12:34:34.12345Z",
+        "total_count": 4,
+        "success_count": 1,
+        "successes": [
+            "indicator--c410e480-e42b-47d1-9476-85307c12bcbf"
+        ],
+        "failure_count": 1,
+        "failures": [
+            {
+              "id": "malware--664fa29d-bf65-4f28-a667-bdb76f29ec98",
+              "message": "Unable to process object"
+            }
+        ],
+        "pending_count": 2,
+        "pendings": [
+            "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
+            "relationship--045585ad-a22f-4333-af33-bfd503a683b5"
+        ]
+    }
+
+
+@pytest.fixture
+def collection_dict():
+    return {
+        "id": "e278b87e-0f9b-4c63-a34c-c8f0b3e91acb",
+        "title": "Writable Collection",
+        "description": "This collection is a dropbox for submitting indicators",
+        "can_read": False,
+        "can_write": True,
+        "media_types": [
+            "application/vnd.oasis.stix+json; version=2.0"
+        ]
+    }
+
+
+@pytest.fixture
 def server():
     """Default server object for example.com"""
     return Server(DISCOVERY_URL, user="foo", password="bar")
@@ -220,6 +260,11 @@ def bad_writable_collection():
     from the one in the response"""
     set_collection_response(response=WRITABLE_COLLECTION)
     return Collection(COLLECTION_URL)
+
+
+def set_api_root_response(response):
+    responses.add(responses.GET, API_ROOT_URL, body=response,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
 
 
 def set_discovery_response(response):
@@ -280,6 +325,66 @@ def test_discovery_with_no_default(server):
 
     assert len(server.api_roots) == 3
     assert server.default is None
+
+
+@responses.activate
+def test_discovery_with_no_title(server):
+    response = """{
+      "description": "This TAXII Server contains a listing of...",
+      "contact": "string containing contact information",
+      "api_roots": [
+        "https://example.com/api1/",
+        "https://example.com/api2/",
+        "https://example.net/trustgroup1/"
+      ]
+    }"""
+    set_discovery_response(response)
+    with pytest.raises(ValidationError) as excinfo:
+        server.refresh()
+
+    assert "No 'title' in Server Discovery for request 'https://example.com/taxii/'" == str(excinfo.value)
+
+
+@responses.activate
+def test_api_root_no_title(api_root):
+    set_api_root_response("""{
+      "description": "A trust group setup for malware researchers",
+      "versions": ["taxii-2.0"],
+      "max_content_length": 9765625
+    }""")
+    with pytest.raises(ValidationError) as excinfo:
+        assert api_root._loaded_information is False
+        api_root.refresh_information()
+
+    assert "No 'title' in API Root for request 'https://example.com/api1/'" == str(excinfo.value)
+
+
+@responses.activate
+def test_api_root_no_versions(api_root):
+    set_api_root_response("""{
+      "title": "Malware Research Group",
+      "description": "A trust group setup for malware researchers",
+      "max_content_length": 9765625
+    }""")
+    with pytest.raises(ValidationError) as excinfo:
+        assert api_root._loaded_information is False
+        api_root.refresh_information()
+
+    assert "No 'versions' in API Root for request 'https://example.com/api1/'" == str(excinfo.value)
+
+
+@responses.activate
+def test_api_root_no_max_content_length(api_root):
+    set_api_root_response("""{
+      "title": "Malware Research Group",
+      "description": "A trust group setup for malware researchers",
+      "versions": ["taxii-2.0"]
+    }""")
+    with pytest.raises(ValidationError) as excinfo:
+        assert api_root._loaded_information is False
+        api_root.refresh_information()
+
+    assert "No 'max_content_length' in API Root for request 'https://example.com/api1/'" == str(excinfo.value)
 
 
 @responses.activate
@@ -591,3 +696,93 @@ def test_invalid_content_type_for_connection():
     assert ("Unexpected Response. Got Content-Type: 'application/vnd.oasis.taxii+json; "
             "version=2.0' for Accept: 'application/vnd.oasis.taxii+json; version=2.0; "
             "charset=utf-8'") == str(excinfo.value)
+
+
+def test_status_missing_id_property(status_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        status_dict.pop("id")
+        Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
+               user="foo", password="bar", verify=False, **status_dict)
+
+    assert "No 'id' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
+
+
+def test_status_missing_status_property(status_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        status_dict.pop("status")
+        Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
+               user="foo", password="bar", verify=False, **status_dict)
+
+    assert "No 'status' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
+
+
+def test_status_missing_total_count_property(status_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        status_dict.pop("total_count")
+        Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
+               user="foo", password="bar", verify=False, **status_dict)
+
+    assert "No 'total_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
+
+
+def test_status_missing_success_count_property(status_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        status_dict.pop("success_count")
+        Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
+               user="foo", password="bar", verify=False, **status_dict)
+
+    assert "No 'success_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
+
+
+def test_status_missing_failure_count_property(status_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        status_dict.pop("failure_count")
+        Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
+               user="foo", password="bar", verify=False, **status_dict)
+
+    assert "No 'failure_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
+
+
+def test_status_missing_pending_count_property(status_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        status_dict.pop("pending_count")
+        Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
+               user="foo", password="bar", verify=False, **status_dict)
+
+    assert "No 'pending_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
+
+
+def test_collection_missing_id_property(collection_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        collection_dict.pop("id")
+        Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                   user="foo", password="bar", verify=False, **collection_dict)
+
+    assert "No 'id' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
+
+
+def test_collection_missing_title_property(collection_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        collection_dict.pop("title")
+        Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                   user="foo", password="bar", verify=False, **collection_dict)
+
+    assert "No 'title' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
+
+
+def test_collection_missing_can_read_property(collection_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        collection_dict.pop("can_read")
+        Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                   user="foo", password="bar", verify=False, **collection_dict)
+
+    assert "No 'can_read' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
+
+
+def test_collection_missing_can_write_property(collection_dict):
+    with pytest.raises(ValidationError) as excinfo:
+        collection_dict.pop("can_write")
+        Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                   user="foo", password="bar", verify=False, **collection_dict)
+
+    assert "No 'can_write' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
