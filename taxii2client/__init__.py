@@ -198,8 +198,8 @@ class Status(_TAXIIEndpoint):
 
     __bool__ = __nonzero__
 
-    def refresh(self):
-        response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
+    def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
+        response = self._conn.get(self.url, accept=accept)
         self._populate_fields(**response)
 
     def wait_until_final(self, poll_interval=1, timeout=60):
@@ -386,30 +386,31 @@ class Collection(_TAXIIEndpoint):
             msg = "Collection '{}' does not allow writing."
             raise AccessError(msg.format(self.url))
 
-    def refresh(self):
-        response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
+    def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
+        response = self._conn.get(self.url, accept=accept)
         self._populate_fields(**response)
         self._loaded = True
 
-    def get_objects(self, **filter_kwargs):
+    def get_objects(self, accept=MEDIA_TYPE_STIX_V20, **filter_kwargs):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.objects_url, accept=MEDIA_TYPE_STIX_V20,
+        return self._conn.get(self.objects_url, accept=accept,
                               params=query_params)
 
-    def get_object(self, obj_id, version=None):
+    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/"
         query_params = None
         if version:
             query_params = _filter_kwargs_to_query_params({"version": version})
-        return self._conn.get(url, accept=MEDIA_TYPE_STIX_V20,
+        return self._conn.get(url, accept=accept,
                               params=query_params)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
-                    timeout=60):
+                    timeout=60, accept=MEDIA_TYPE_TAXII_V20,
+                    content_type=MEDIA_TYPE_STIX_V20):
         """Implement the ``Add Objects`` endpoint (section 5.4)
 
         Add objects to the collection.  This may be performed either
@@ -427,10 +428,13 @@ class Collection(_TAXIIEndpoint):
                 parsed into native Python)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
-            poll_interval: If waiting for completion, how often to poll
+            poll_interval (int): If waiting for completion, how often to poll
                 the status service (seconds)
-            timeout: If waiting for completion, how long to poll until giving
-                up (seconds).  Use <= 0 to wait forever
+            timeout (int): If waiting for completion, how long to poll until
+                giving up (seconds).  Use <= 0 to wait forever
+            accept (str): media type to include in the ``Accept:`` header.
+            content_type (str): media type to include in the ``Content-Type:``
+                header.
 
         Returns:
             If ``wait_for_completion`` is False, a Status object corresponding
@@ -446,8 +450,8 @@ class Collection(_TAXIIEndpoint):
         self._verify_can_write()
 
         headers = {
-            "Accept": MEDIA_TYPE_TAXII_V20,
-            "Content-Type": MEDIA_TYPE_STIX_V20,
+            "Accept": accept,
+            "Content-Type": content_type,
         }
 
         if isinstance(bundle, dict):
@@ -473,12 +477,12 @@ class Collection(_TAXIIEndpoint):
 
         return status
 
-    def get_manifest(self, **filter_kwargs):
+    def get_manifest(self, accept=MEDIA_TYPE_TAXII_V20, **filter_kwargs):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(self.url + "manifest/",
-                              accept=MEDIA_TYPE_TAXII_V20,
+                              accept=accept,
                               params=query_params)
 
 
@@ -545,17 +549,17 @@ class ApiRoot(_TAXIIEndpoint):
         if not self._loaded_information:
             self.refresh_information()
 
-    def refresh(self):
+    def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update the API Root's information and list of Collections"""
-        self.refresh_information()
-        self.refresh_collections()
+        self.refresh_information(accept)
+        self.refresh_collections(accept)
 
-    def refresh_information(self):
+    def refresh_information(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update the properties of this API Root.
 
         This invokes the ``Get API Root Information`` endpoint.
         """
-        response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
+        response = self._conn.get(self.url, accept=accept)
 
         self._title = response["title"]
         self._description = response["description"]
@@ -564,13 +568,13 @@ class ApiRoot(_TAXIIEndpoint):
 
         self._loaded_information = True
 
-    def refresh_collections(self):
+    def refresh_collections(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update the list of Collections contained by this API Root.
 
         This invokes the ``Get Collections`` endpoint.
         """
         url = self.url + "collections/"
-        response = self._conn.get(url, accept=MEDIA_TYPE_TAXII_V20)
+        response = self._conn.get(url, accept=accept)
 
         self._collections = []
         for item in response["collections"]:
@@ -580,9 +584,9 @@ class ApiRoot(_TAXIIEndpoint):
 
         self._loaded_collections = True
 
-    def get_status(self, status_id):
+    def get_status(self, status_id, accept=MEDIA_TYPE_TAXII_V20):
         status_url = self.url + "status/" + status_id + "/"
-        info = self._conn.get(status_url, accept=MEDIA_TYPE_TAXII_V20)
+        info = self._conn.get(status_url, accept=accept)
         return Status(status_url, conn=self._conn, **info)
 
 
@@ -700,6 +704,23 @@ class _HTTPConnection(object):
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
 
+    def valid_content_type(self, content_type, accept):
+        """Check that the server is returning a valid Content-Type
+
+        Args:
+            content_type (str): ``Content-Type:`` header value
+            accept (str): media type to include in the ``Accept:`` header.
+
+        """
+        accept_tokens = accept.replace(' ', '').split(';')
+        content_type_tokens = content_type.replace(' ', '').split(';')
+
+        return (
+            all(elem in content_type_tokens for elem in accept_tokens) and
+            (content_type_tokens[0] == 'application/vnd.oasis.taxii+json' or
+             content_type_tokens[0] == 'application/vnd.oasis.stix+json')
+        )
+
     def get(self, url, accept, params=None):
         """Perform an HTTP GET, using the saved requests.Session and auth info.
 
@@ -720,9 +741,10 @@ class _HTTPConnection(object):
         resp.raise_for_status()
 
         content_type = resp.headers["Content-Type"]
-        if not content_type.startswith(accept):
-            msg = "Unexpected Response Content-Type: {}"
-            raise TAXIIServiceException(msg.format(content_type))
+
+        if not self.valid_content_type(content_type=content_type, accept=accept):
+            msg = "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'"
+            raise TAXIIServiceException(msg.format(content_type, accept))
 
         return resp.json()
 
