@@ -1,8 +1,8 @@
 |Build_Status| |Coverage| |Version|
 
-====================
-`cti-taxii-client`
-====================
+================
+cti-taxii-client
+================
 
 NOTE: This is an `OASIS TC Open Repository
 <https://www.oasis-open.org/resources/open-repositories/>`_. See the
@@ -161,7 +161,7 @@ additional or substitute Maintainers, per `consensus agreements
 <https://www.oasis-open.org/resources/open-repositories/maintainers-guide#additionalMaintainers>`__.
 
 Current Maintainers of this TC Open Repository
--------------------------------------------
+----------------------------------------------
 
 -  `Greg Back <mailto:gback@mitre.org>`__; GitHub ID:
    https://github.com/gtback/; WWW: `MITRE
@@ -174,7 +174,7 @@ Current Maintainers of this TC Open Repository
    Corporation <https://www.mitre.org/>`__
 
 About OASIS TC Open Repositories
------------------------------
+--------------------------------
 
 -  `TC Open Repositories: Overview and
    Resources <https://www.oasis-open.org/resources/open-repositories/>`__
