@@ -1,3 +1,10 @@
+Version 0.3.0
+2018-04-12
+- #21 Re-work the accept parameters validation
+- #24 Expose verify positional parameter on endpoints
+- #27 Expose the accept positional parameter to allow configurable requests
+- #30 Do not fail hard for optional fields of a response
+
 Version 0.2.0
 2017-11-07
 - Filter keyword arguments to query params
