@@ -678,9 +678,6 @@ class Server(_TAXIIEndpoint):
         """
         super(Server, self).__init__(url, conn, user, password, verify)
 
-        self._user = user
-        self._password = password
-        self._verify = verify
         self._loaded = False
 
     @property
@@ -726,10 +723,9 @@ class Server(_TAXIIEndpoint):
         self._description = response.get("description")  # optional
         self._contact = response.get("contact")  # optional
         roots = response.get("api_roots", [])  # optional
+
         self._api_roots = [ApiRoot(url,
-                                   user=self._user,
-                                   password=self._password,
-                                   verify=self._verify)
+                                   conn=self._conn)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.0 spec says that the
@@ -757,7 +753,7 @@ class _HTTPConnection(object):
 
     """
 
-    def __init__(self, user=None, password=None, verify=True):
+    def __init__(self, user=None, password=None, verify=True, session=None):
         """Create a connection session.
 
         Args:
@@ -766,10 +762,13 @@ class _HTTPConnection(object):
             verify (bool): validate the entity credentials. (default: True)
 
         """
-        self.session = requests.Session()
-        self.session.verify = verify
-        if user and password:
-            self.session.auth = requests.auth.HTTPBasicAuth(user, password)
+        if not session:
+            self.session = requests.Session()
+            self.session.verify = verify
+            if user and password:
+                self.session.auth = requests.auth.HTTPBasicAuth(user, password)
+        else:
+            self.session = session
 
     def valid_content_type(self, content_type, accept):
         """Check that the server is returning a valid Content-Type
