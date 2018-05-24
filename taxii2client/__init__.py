@@ -757,7 +757,7 @@ class _HTTPConnection(object):
 
     """
 
-    def __init__(self, user=None, password=None, verify=True):
+    def __init__(self, user=None, password=None, verify=True, proxies=None):
         """Create a connection session.
 
         Args:
@@ -770,6 +770,8 @@ class _HTTPConnection(object):
         self.session.verify = verify
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
+        if proxies:
+            self.session.proxies.update(proxies)
 
     def valid_content_type(self, content_type, accept):
         """Check that the server is returning a valid Content-Type
