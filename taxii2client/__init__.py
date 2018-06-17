@@ -1,3 +1,5 @@
+"""Python TAXII 2.0 Client API"""
+
 from __future__ import unicode_literals
 
 import datetime
@@ -164,10 +166,10 @@ class _TAXIIEndpoint(object):
 
 
 class Status(_TAXIIEndpoint):
-    """TAXII Status Resource
+    """TAXII Status Resource.
 
-    This class represents the ``Get Status` endpoint (section 4.3) and also
-    contains the information about the Status Resource (section 4.3.1).
+    This class represents the ``Get Status`` endpoint (section 4.3) and also
+    contains the information about the Status Resource (section 4.3.1)
 
     """
     # We don't need to jump through the same lazy-load as with Collection,
@@ -199,6 +201,7 @@ class Status(_TAXIIEndpoint):
     __bool__ = __nonzero__
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
+        """Updates Status information"""
         response = self._conn.get(self.url, accept=accept)
         self._populate_fields(**response)
 
@@ -207,9 +210,9 @@ class Status(_TAXIIEndpoint):
         timeout and time interval.
 
         Args:
-            poll_interval: how often to poll the status service (seconds)
-            timeout: how long to poll the URL until giving up (seconds).
-                Use <= 0 to wait forever
+            poll_interval (int): how often to poll the status service.
+            timeout (int): how long to poll the URL until giving up. Use <= 0
+                to wait forever
 
         """
         start_time = time.time()
@@ -430,6 +433,7 @@ class Collection(_TAXIIEndpoint):
             raise AccessError(msg.format(self.url))
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
+        """Update Collection information"""
         response = self._conn.get(self.url, accept=accept)
         self._populate_fields(**response)
         self._loaded = True
@@ -467,8 +471,7 @@ class Collection(_TAXIIEndpoint):
         expires, or the operation completes.
 
         Args:
-            bundle: A STIX bundle with the objects to add (JSON as it would be
-                parsed into native Python)
+            bundle (str): A STIX bundle with the objects to add.
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
             poll_interval (int): If waiting for completion, how often to poll
@@ -720,6 +723,7 @@ class Server(_TAXIIEndpoint):
             raise ValidationError(msg.format(self.url))
 
     def refresh(self):
+        """Update the Server information and list of API Roots"""
         response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
 
         self._title = response.get("title")  # required

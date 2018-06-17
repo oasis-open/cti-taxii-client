@@ -8,7 +8,7 @@ NOTE: This is an `OASIS TC Open Repository
 <https://www.oasis-open.org/resources/open-repositories/>`_. See the
 `Governance`_ section for more information.
 
-cti-taxii-client is a minimal implementation of client for the TAXII 2.0 server.
+cti-taxii-client is a minimal client implementation for the TAXII 2.0 server.
 It supports the following TAXII 2.0 API services:
 
 - Server Discovery
