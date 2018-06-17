@@ -59,5 +59,8 @@ setup(
             'responses',
             'tox',
         ],
+        'docs': [
+            'sphinx'
+        ]
     }
 )
