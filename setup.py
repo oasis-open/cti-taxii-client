@@ -1,28 +1,14 @@
 #!/usr/bin/env python
 from codecs import open
-import os.path
 
 from setuptools import find_packages, setup
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VERSION_FILE = os.path.join(BASE_DIR, 'taxii2client', 'version.py')
-
-
-def get_version():
-    with open(VERSION_FILE) as f:
-        for line in f.readlines():
-            if line.startswith("__version__"):
-                version = line.split()[-1].strip('"')
-                return version
-        raise AttributeError("Package does not have a __version__")
-
 
 with open('README.rst')as f:
     long_description = f.read()
 
 setup(
     name='taxii2-client',
-    version=get_version(),
+    version='0.3.1',
     description='TAXII 2 Client Library',
     long_description=long_description,
     url='https://github.com/oasis-open/cti-taxii-client',
