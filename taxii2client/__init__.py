@@ -834,17 +834,3 @@ class _HTTPConnection(object):
     def close(self):
         """Closes connections.  This object is no longer usable."""
         self.session.close()
-
-
-def get_collection_by_id(api_root, coll_id):
-    for collection in api_root.collections:
-        if collection.id == coll_id:
-            return collection
-    return None
-
-
-def canonicalize_url(api_root_url):
-    api_root_url = urlparse.urlsplit(api_root_url).geturl()
-    if not api_root_url.endswith("/"):
-        api_root_url += "/"
-    return api_root_url

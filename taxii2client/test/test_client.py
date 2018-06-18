@@ -9,7 +9,7 @@ from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
     Collection, InvalidArgumentsError, Server, Status, TAXIIServiceException,
     ValidationError, _filter_kwargs_to_query_params, _HTTPConnection,
-    _TAXIIEndpoint, get_collection_by_id
+    _TAXIIEndpoint
 )
 
 TAXII_SERVER = "example.com"
@@ -419,33 +419,6 @@ def test_api_root_collections(api_root):
     assert coll.can_read is True
     assert coll.can_write is False
     assert coll.media_types == [MEDIA_TYPE_STIX_V20]
-
-
-@responses.activate
-def test_get_collection_by_id_exists(api_root):
-    responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE, status=200,
-                  content_type=MEDIA_TYPE_TAXII_V20)
-
-    coll = get_collection_by_id(api_root, "91a7b528-80eb-42ed-a74d-c6fbd5a26116")
-
-    assert coll
-    assert coll._loaded is True
-    assert coll.id == "91a7b528-80eb-42ed-a74d-c6fbd5a26116"
-    assert coll.url == COLLECTION_URL
-    assert coll.title == "High Value Indicator Collection"
-    assert coll.description == "This data collection is for collecting high value IOCs"
-    assert coll.can_read is True
-    assert coll.can_write is False
-    assert coll.media_types == [MEDIA_TYPE_STIX_V20]
-
-
-@responses.activate
-def test_get_collection_by_id_not_present(api_root):
-    responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE, status=200,
-                  content_type=MEDIA_TYPE_TAXII_V20)
-
-    coll = get_collection_by_id(api_root, "12345678-1234-1234-1234-123456789012")
-    assert coll is None
 
 
 @responses.activate
