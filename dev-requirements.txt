@@ -1,1 +1,3 @@
+bumpversion==0.5.3
+
 -e .[docs,test]

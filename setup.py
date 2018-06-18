@@ -60,9 +60,7 @@ setup(
             'tox',
         ],
         'docs': [
-            'sphinx<1.6',
-            'nbsphinx==0.3.2',
-            'sphinx-prompt'
+            'sphinx',
         ]
     }
 )
