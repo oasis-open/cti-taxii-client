@@ -178,7 +178,7 @@ class Status(_TAXIIEndpoint):
     # aren't other endpoints to call on the Status object.
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 **kwargs):
+                 status_info=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -187,11 +187,16 @@ class Status(_TAXIIEndpoint):
             password (str): password for authentication (optional)
             conn (_HTTPConnection): reuse connection object, as an alternative
                 to providing username/password
+            status_info (dict): Parsed JSON representing a response from the
+                status endpoint, if already known.  If not given, the
+                endpoint will be queried. (optional)
 
         """
         super(Status, self).__init__(url, conn, user, password, verify)
-        if kwargs:
-            self._populate_fields(**kwargs)
+        self.__raw = None
+        if status_info:
+            self._populate_fields(**status_info)
+            self.__raw = status_info
         else:
             self.refresh()
 
@@ -200,9 +205,14 @@ class Status(_TAXIIEndpoint):
 
     __bool__ = __nonzero__
 
+    @property
+    def _raw(self):
+        """Get the "raw" status response (parsed JSON)."""
+        return self.__raw
+
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Updates Status information"""
-        response = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url, accept=accept)
         self._populate_fields(**response)
 
     def wait_until_final(self, poll_interval=1, timeout=60):
@@ -317,7 +327,7 @@ class Collection(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 **kwargs):
+                 collection_info=None):
         """
         Initialize a new Collection.  Either user/password or conn may be
         given, but not both.  The latter is intended for internal use, when
@@ -334,20 +344,22 @@ class Collection(_TAXIIEndpoint):
                 case it must be a path to a CA bundle to use. Defaults to
                 `True` (optional)
             conn (_HTTPConnection): A connection to reuse (optional)
-            kwargs: Collection metadata, if known in advance (optional)
+            collection_info: Collection metadata, if known in advance (optional)
 
         """
 
         super(Collection, self).__init__(url, conn, user, password, verify)
 
         self._loaded = False
+        self.__raw = None
 
         # Since the API Root "Get Collections" endpoint returns information on
         # all collections as a list, it's possible that we can create multiple
         # Collection objects from a single HTTPS request, and not need to call
         # `refresh` for each one.
-        if kwargs:
-            self._populate_fields(**kwargs)
+        if collection_info:
+            self._populate_fields(**collection_info)
+            self.__raw = collection_info
             self._loaded = True
 
     @property
@@ -383,6 +395,12 @@ class Collection(_TAXIIEndpoint):
     @property
     def objects_url(self):
         return self.url + "objects/"
+
+    @property
+    def _raw(self):
+        """Get the "raw" collection information response (parsed JSON)."""
+        self._ensure_loaded()
+        return self.__raw
 
     def _populate_fields(self, id=None, title=None, description=None,
                          can_read=None, can_write=None, media_types=None):
@@ -434,7 +452,7 @@ class Collection(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update Collection information"""
-        response = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url, accept=accept)
         self._populate_fields(**response)
         self._loaded = True
 
@@ -514,7 +532,8 @@ class Collection(_TAXIIEndpoint):
             "../../status/{}".format(status_json["id"])
         )
 
-        status = Status(url=status_url, conn=self._conn, **status_json)
+        status = Status(url=status_url, conn=self._conn,
+                        status_info=status_json)
 
         if not wait_for_completion or status.status == "complete":
             return status
@@ -564,6 +583,7 @@ class ApiRoot(_TAXIIEndpoint):
 
         self._loaded_collections = False
         self._loaded_information = False
+        self.__raw = None
 
     @property
     def collections(self):
@@ -590,6 +610,12 @@ class ApiRoot(_TAXIIEndpoint):
     def max_content_length(self):
         self._ensure_loaded_information()
         return self._max_content_length
+
+    @property
+    def _raw(self):
+        """Get the "raw" API root information response (parsed JSON)."""
+        self._ensure_loaded_information()
+        return self.__raw
 
     def _ensure_loaded_information(self):
         if not self._loaded_information:
@@ -620,7 +646,7 @@ class ApiRoot(_TAXIIEndpoint):
 
         This invokes the ``Get API Root Information`` endpoint.
         """
-        response = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url, accept=accept)
 
         self._title = response.get("title")  # required
         self._description = response.get("description")  # optional
@@ -641,7 +667,8 @@ class ApiRoot(_TAXIIEndpoint):
         self._collections = []
         for item in response.get("collections", []):  # optional
             collection_url = url + item["id"] + "/"
-            collection = Collection(collection_url, conn=self._conn, **item)
+            collection = Collection(collection_url, conn=self._conn,
+                                    collection_info=item)
             self._collections.append(collection)
 
         self._loaded_collections = True
@@ -649,7 +676,7 @@ class ApiRoot(_TAXIIEndpoint):
     def get_status(self, status_id, accept=MEDIA_TYPE_TAXII_V20):
         status_url = self.url + "status/" + status_id + "/"
         response = self._conn.get(status_url, accept=accept)
-        return Status(status_url, conn=self._conn, **response)
+        return Status(status_url, conn=self._conn, status_info=response)
 
 
 class Server(_TAXIIEndpoint):
@@ -685,6 +712,7 @@ class Server(_TAXIIEndpoint):
         self._password = password
         self._verify = verify
         self._loaded = False
+        self.__raw = None
 
     @property
     def title(self):
@@ -711,6 +739,12 @@ class Server(_TAXIIEndpoint):
         self._ensure_loaded()
         return self._api_roots
 
+    @property
+    def _raw(self):
+        """Get the "raw" server discovery response (parsed JSON)."""
+        self._ensure_loaded()
+        return self.__raw
+
     def _ensure_loaded(self):
         if not self._loaded:
             self.refresh()
@@ -724,7 +758,8 @@ class Server(_TAXIIEndpoint):
 
     def refresh(self):
         """Update the Server information and list of API Roots"""
-        response = self._conn.get(self.url, accept=MEDIA_TYPE_TAXII_V20)
+        response = self.__raw = self._conn.get(self.url,
+                                               accept=MEDIA_TYPE_TAXII_V20)
 
         self._title = response.get("title")  # required
         self._description = response.get("description")  # optional
