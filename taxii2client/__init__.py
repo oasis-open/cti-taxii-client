@@ -15,6 +15,7 @@ __version__ = '0.3.1'
 
 MEDIA_TYPE_STIX_V20 = "application/vnd.oasis.stix+json; version=2.0"
 MEDIA_TYPE_TAXII_V20 = "application/vnd.oasis.taxii+json; version=2.0"
+DEFAULT_USER_AGENT = "taxii2-client/" + __version__
 
 
 class TAXIIServiceException(Exception):
@@ -801,17 +802,20 @@ class _HTTPConnection(object):
 
     """
 
-    def __init__(self, user=None, password=None, verify=True, proxies=None):
+    def __init__(self, user=None, password=None, verify=True, proxies=None,
+                 user_agent=DEFAULT_USER_AGENT):
         """Create a connection session.
 
         Args:
             user (str): username for authentication (optional)
             password (str): password for authentication (optional)
             verify (bool): validate the entity credentials. (default: True)
-
+            user_agent (str): A value to use for the User-Agent header in
+                requests.
         """
         self.session = requests.Session()
         self.session.verify = verify
+        self.user_agent = user_agent
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
         if proxies:
@@ -849,6 +853,8 @@ class _HTTPConnection(object):
         headers = {
             "Accept": accept
         }
+        if self.user_agent:
+            headers["User-Agent"] = self.user_agent
         resp = self.session.get(url, headers=headers, params=params)
 
         resp.raise_for_status()
@@ -867,6 +873,14 @@ class _HTTPConnection(object):
         extra query parameters are merged with any which already exist in the
         URL.
         """
+        if self.user_agent:
+            if headers and "User-Agent" not in headers:
+                # avoid modifying caller's dict
+                headers = headers.copy()
+                headers["User-Agent"] = self.user_agent
+            elif not headers:
+                headers = {"User-Agent": self.user_agent}
+
         resp = self.session.post(url, headers=headers, params=params, data=data)
         resp.raise_for_status()
         return _to_json(resp)
