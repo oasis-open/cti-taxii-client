@@ -38,6 +38,11 @@ class ValidationError(TAXIIServiceException):
     pass
 
 
+class InvalidJSONError(TAXIIServiceException):
+    """A server endpoint gave us invalid JSON"""
+    pass
+
+
 def _format_datetime(dttm):
     """Convert a datetime object into a valid STIX timestamp string.
 
@@ -819,7 +824,7 @@ class _HTTPConnection(object):
             msg = "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'"
             raise TAXIIServiceException(msg.format(content_type, accept))
 
-        return resp.json()
+        return _to_json(resp)
 
     def post(self, url, headers=None, params=None, data=None):
         """Send a JSON POST request with the given request headers, additional
@@ -829,8 +834,26 @@ class _HTTPConnection(object):
         """
         resp = self.session.post(url, headers=headers, params=params, data=data)
         resp.raise_for_status()
-        return resp.json()
+        return _to_json(resp)
 
     def close(self):
         """Closes connections.  This object is no longer usable."""
         self.session.close()
+
+
+def _to_json(resp):
+    """
+    Factors out some JSON parse code with error handling, to hopefully improve
+    error messages.
+
+    :param resp: A "requests" library response
+    :return: Parsed JSON.
+    :raises: InvalidJSONError If JSON parsing failed.
+    """
+    try:
+        return resp.json()
+    except ValueError as e:
+        # Maybe better to report the original request URL?
+        six.raise_from(InvalidJSONError(
+            "Invalid JSON was received from " + resp.request.url
+        ), e)

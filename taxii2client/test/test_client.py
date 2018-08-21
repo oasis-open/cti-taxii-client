@@ -7,9 +7,9 @@ import six
 
 from taxii2client import (
     MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
-    Collection, InvalidArgumentsError, Server, Status, TAXIIServiceException,
-    ValidationError, _filter_kwargs_to_query_params, _HTTPConnection,
-    _TAXIIEndpoint
+    Collection, InvalidArgumentsError, InvalidJSONError, Server, Status,
+    TAXIIServiceException, ValidationError, _filter_kwargs_to_query_params,
+    _HTTPConnection, _TAXIIEndpoint
 )
 
 TAXII_SERVER = "example.com"
@@ -186,6 +186,8 @@ STATUS_RESPONSE = """{
   ]
 }"""
 
+BAD_DISCOVERY_RESPONSE = """{"title":"""
+
 
 @pytest.fixture
 def status_dict():
@@ -295,6 +297,15 @@ def test_server_discovery(server):
     assert api_root.url == API_ROOT_URL
     assert api_root._loaded_information is False
     assert api_root._loaded_collections is False
+
+
+@responses.activate
+def test_bad_json_response(server):
+    set_discovery_response(BAD_DISCOVERY_RESPONSE)
+
+    with pytest.raises(InvalidJSONError):
+        # Just do something to trigger a request
+        server.title
 
 
 @responses.activate
