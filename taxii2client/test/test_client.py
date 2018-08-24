@@ -274,9 +274,19 @@ def set_discovery_response(response):
                   content_type=MEDIA_TYPE_TAXII_V20)
 
 
+def set_collections_response():
+    responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+
+
 def set_collection_response(url=COLLECTION_URL, response=COLLECTION_RESPONSE):
     responses.add(responses.GET, url, response, status=200,
                   content_type=MEDIA_TYPE_TAXII_V20)
+
+
+def set_status_response():
+    responses.add(responses.GET, STATUS_URL, STATUS_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
 
 
 @responses.activate
@@ -297,6 +307,9 @@ def test_server_discovery(server):
     assert api_root.url == API_ROOT_URL
     assert api_root._loaded_information is False
     assert api_root._loaded_collections is False
+
+    discovery_dict = json.loads(DISCOVERY_RESPONSE)
+    assert server._raw == discovery_dict
 
 
 @responses.activate
@@ -400,8 +413,7 @@ def test_api_root_no_max_content_length(api_root):
 
 @responses.activate
 def test_api_root(api_root):
-    responses.add(responses.GET, API_ROOT_URL, API_ROOT_RESPONSE,
-                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+    set_api_root_response(API_ROOT_RESPONSE)
 
     assert api_root._loaded_information is False
     assert api_root.title == "Malware Research Group"
@@ -410,11 +422,13 @@ def test_api_root(api_root):
     assert api_root.versions == ["taxii-2.0"]
     assert api_root.max_content_length == 9765625
 
+    apiroot_dict = json.loads(API_ROOT_RESPONSE)
+    assert api_root._raw == apiroot_dict
+
 
 @responses.activate
 def test_api_root_collections(api_root):
-    responses.add(responses.GET, COLLECTIONS_URL, COLLECTIONS_RESPONSE, status=200,
-                  content_type=MEDIA_TYPE_TAXII_V20)
+    set_collections_response()
 
     assert api_root._loaded_collections is False
     assert len(api_root.collections) == 2
@@ -431,6 +445,9 @@ def test_api_root_collections(api_root):
     assert coll.can_write is False
     assert coll.media_types == [MEDIA_TYPE_STIX_V20]
 
+    collection_dict = json.loads(COLLECTION_RESPONSE)
+    assert coll._raw == collection_dict
+
 
 @responses.activate
 def test_collection(collection):
@@ -443,6 +460,9 @@ def test_collection(collection):
     assert collection.can_read is True
     assert collection.can_write is False
     assert collection.media_types == [MEDIA_TYPE_STIX_V20]
+
+    collection_dict = json.loads(COLLECTION_RESPONSE)
+    assert collection._raw == collection_dict
 
 
 def test_collection_unexpected_kwarg():
@@ -491,6 +511,9 @@ def test_add_object_to_collection(writable_collection):
     assert len(status.successes) == 1
     assert status.failure_count == 0
     assert status.pending_count == 0
+
+    status_dict = json.loads(ADD_OBJECTS_RESPONSE)
+    assert status._raw == status_dict
 
 
 @responses.activate
@@ -547,9 +570,8 @@ def test_get_manifest(collection):
 
 
 @responses.activate
-def test_get_status(api_root):
-    responses.add(responses.GET, STATUS_URL, STATUS_RESPONSE,
-                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+def test_get_status(api_root, status_dict):
+    set_status_response()
 
     status = api_root.get_status(STATUS_ID)
 
@@ -560,6 +582,17 @@ def test_get_status(api_root):
     assert len(status.failures) == 1
     assert status.pending_count == 2
     assert len(status.pendings) == 2
+
+    assert status._raw == status_dict
+
+
+@responses.activate
+def test_status_raw(status_dict):
+    """Test Status object created directly (not obtained via ApiRoot),
+    and _raw property."""
+    set_status_response()
+    status = Status(STATUS_URL)
+    assert status_dict == status._raw
 
 
 @responses.activate
@@ -686,7 +719,8 @@ def test_status_missing_id_property(status_dict):
     with pytest.raises(ValidationError) as excinfo:
         status_dict.pop("id")
         Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
-               user="foo", password="bar", verify=False, **status_dict)
+               user="foo", password="bar", verify=False,
+               status_info=status_dict)
 
     assert "No 'id' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
 
@@ -695,7 +729,8 @@ def test_status_missing_status_property(status_dict):
     with pytest.raises(ValidationError) as excinfo:
         status_dict.pop("status")
         Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
-               user="foo", password="bar", verify=False, **status_dict)
+               user="foo", password="bar", verify=False,
+               status_info=status_dict)
 
     assert "No 'status' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
 
@@ -704,7 +739,8 @@ def test_status_missing_total_count_property(status_dict):
     with pytest.raises(ValidationError) as excinfo:
         status_dict.pop("total_count")
         Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
-               user="foo", password="bar", verify=False, **status_dict)
+               user="foo", password="bar", verify=False,
+               status_info=status_dict)
 
     assert "No 'total_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
 
@@ -713,7 +749,8 @@ def test_status_missing_success_count_property(status_dict):
     with pytest.raises(ValidationError) as excinfo:
         status_dict.pop("success_count")
         Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
-               user="foo", password="bar", verify=False, **status_dict)
+               user="foo", password="bar", verify=False,
+               status_info=status_dict)
 
     assert "No 'success_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
 
@@ -722,7 +759,8 @@ def test_status_missing_failure_count_property(status_dict):
     with pytest.raises(ValidationError) as excinfo:
         status_dict.pop("failure_count")
         Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
-               user="foo", password="bar", verify=False, **status_dict)
+               user="foo", password="bar", verify=False,
+               status_info=status_dict)
 
     assert "No 'failure_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
 
@@ -731,7 +769,8 @@ def test_status_missing_pending_count_property(status_dict):
     with pytest.raises(ValidationError) as excinfo:
         status_dict.pop("pending_count")
         Status("https://example.com/api1/status/12345678-1234-1234-1234-123456789012/",
-               user="foo", password="bar", verify=False, **status_dict)
+               user="foo", password="bar", verify=False,
+               status_info=status_dict)
 
     assert "No 'pending_count' in Status for request 'https://example.com/api1/status/12345678-1234-1234-1234-123456789012/'" == str(excinfo.value)
 
@@ -740,7 +779,8 @@ def test_collection_missing_id_property(collection_dict):
     with pytest.raises(ValidationError) as excinfo:
         collection_dict.pop("id")
         Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
-                   user="foo", password="bar", verify=False, **collection_dict)
+                   user="foo", password="bar", verify=False,
+                   collection_info=collection_dict)
 
     assert "No 'id' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
 
@@ -749,7 +789,8 @@ def test_collection_missing_title_property(collection_dict):
     with pytest.raises(ValidationError) as excinfo:
         collection_dict.pop("title")
         Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
-                   user="foo", password="bar", verify=False, **collection_dict)
+                   user="foo", password="bar", verify=False,
+                   collection_info=collection_dict)
 
     assert "No 'title' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
 
@@ -758,7 +799,8 @@ def test_collection_missing_can_read_property(collection_dict):
     with pytest.raises(ValidationError) as excinfo:
         collection_dict.pop("can_read")
         Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
-                   user="foo", password="bar", verify=False, **collection_dict)
+                   user="foo", password="bar", verify=False,
+                   collection_info=collection_dict)
 
     assert "No 'can_read' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
 
@@ -767,6 +809,7 @@ def test_collection_missing_can_write_property(collection_dict):
     with pytest.raises(ValidationError) as excinfo:
         collection_dict.pop("can_write")
         Collection("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
-                   user="foo", password="bar", verify=False, **collection_dict)
+                   user="foo", password="bar", verify=False,
+                   collection_info=collection_dict)
 
     assert "No 'can_write' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
