@@ -855,7 +855,16 @@ class _HTTPConnection(object):
 
         """
 
-        merged_headers = self._merge_headers(headers)
+        # Let the "accept" param to this method override the content of
+        # the "headers" param.
+        if headers:
+            method_headers = requests.structures.CaseInsensitiveDict(headers)
+        else:
+            method_headers = {}
+
+        method_headers["Accept"] = accept
+
+        merged_headers = self._merge_headers(method_headers)
 
         resp = self.session.get(url, headers=merged_headers, params=params)
 
