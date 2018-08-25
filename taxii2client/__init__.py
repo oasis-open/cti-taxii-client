@@ -8,6 +8,7 @@ import time
 
 import pytz
 import requests
+import requests.structures  # is this public API?
 import six
 import six.moves.urllib.parse as urlparse
 
@@ -811,11 +812,13 @@ class _HTTPConnection(object):
             password (str): password for authentication (optional)
             verify (bool): validate the entity credentials. (default: True)
             user_agent (str): A value to use for the User-Agent header in
-                requests.
+                requests.  If not given, use a default value which represents
+                this library.
         """
         self.session = requests.Session()
         self.session.verify = verify
-        self.user_agent = user_agent
+        # enforce that we always have a connection-default user agent.
+        self.user_agent = user_agent or DEFAULT_USER_AGENT
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
         if proxies:
@@ -838,7 +841,7 @@ class _HTTPConnection(object):
              content_type_tokens[0] == 'application/vnd.oasis.stix+json')
         )
 
-    def get(self, url, accept, params=None):
+    def get(self, url, accept, params=None, headers=None):
         """Perform an HTTP GET, using the saved requests.Session and auth info.
 
         Args:
@@ -846,16 +849,15 @@ class _HTTPConnection(object):
             accept (str): media type to include in the ``Accept:`` header. This
                 function checks that the ``Content-Type:`` header on the HTTP
                 response matches this media type.
+            headers (dict): Any other headers to be added to the request.
             params: dictionary or bytes to be sent in the query string for the
                 request. (optional)
 
         """
-        headers = {
-            "Accept": accept
-        }
-        if self.user_agent:
-            headers["User-Agent"] = self.user_agent
-        resp = self.session.get(url, headers=headers, params=params)
+
+        merged_headers = self._merge_headers(headers)
+
+        resp = self.session.get(url, headers=merged_headers, params=params)
 
         resp.raise_for_status()
 
@@ -873,21 +875,53 @@ class _HTTPConnection(object):
         extra query parameters are merged with any which already exist in the
         URL.
         """
-        if self.user_agent:
-            if headers and "User-Agent" not in headers:
-                # avoid modifying caller's dict
-                headers = headers.copy()
-                headers["User-Agent"] = self.user_agent
-            elif not headers:
-                headers = {"User-Agent": self.user_agent}
 
-        resp = self.session.post(url, headers=headers, params=params, data=data)
+        merged_headers = self._merge_headers(headers)
+
+        resp = self.session.post(url, headers=merged_headers, params=params,
+                                 data=data)
         resp.raise_for_status()
         return _to_json(resp)
 
     def close(self):
         """Closes connections.  This object is no longer usable."""
         self.session.close()
+
+    def _merge_headers(self, call_specific_headers):
+        """
+        Merge headers from different sources together.  Headers passed to the
+        post/get methods have highest priority, then headers associated with
+        the connection object itself have next priority.
+
+        :param call_specific_headers: A header dict from the get/post call, or
+            None (the default for those methods).
+        :return: A key-case-insensitive MutableMapping object which contains
+            the merged headers.  (This doesn't actually return a dict.)
+        """
+
+        # A case-insensitive mapping is necessary here so that there is
+        # predictable behavior.  If a plain dict were used, you'd get keys in
+        # the merged dict which differ only in case.  The requests library
+        # would merge them internally, and it would be unpredictable which key
+        # is chosen for the final set of headers.  Another possible approach
+        # would be to upper/lower-case everything, but this seemed easier.  On
+        # the other hand, I don't know if CaseInsensitiveDict is public API...?
+
+        # First establish defaults
+        merged_headers = requests.structures.CaseInsensitiveDict({
+            "User-Agent": self.user_agent
+        })
+
+        # Then overlay with specifics from post/get methods
+        if call_specific_headers:
+            merged_headers.update(call_specific_headers)
+
+        # Special "User-Agent" header check, to ensure one is always sent.
+        # The call-specific overlay could have null'd out that header.
+        if not merged_headers.get("User-Agent"):
+            merged_headers["User-Agent"] = self.user_agent
+
+        return merged_headers
 
 
 def _to_json(resp):
