@@ -6,7 +6,7 @@ import responses
 import six
 
 from taxii2client import (
-    MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, DEFAULT_USER_AGENT, AccessError,
+    DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError,
     ApiRoot, Collection, InvalidArgumentsError, InvalidJSONError, Server,
     Status, TAXIIServiceException, ValidationError,
     _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
