@@ -33,7 +33,6 @@
 # ones.
 extensions = [
     'sphinx-prompt',
-    'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
