@@ -47,6 +47,7 @@ setup(
         ],
         'docs': [
             'sphinx',
+            'sphinx-prompt',
         ]
     }
 )
