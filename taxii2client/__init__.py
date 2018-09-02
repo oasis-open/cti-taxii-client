@@ -219,7 +219,8 @@ class Status(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Updates Status information"""
-        response = self.__raw = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url,
+                                               headers={"Accept": accept})
         self._populate_fields(**response)
 
     def wait_until_final(self, poll_interval=1, timeout=60):
@@ -459,7 +460,8 @@ class Collection(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update Collection information"""
-        response = self.__raw = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url,
+                                               headers={"Accept": accept})
         self._populate_fields(**response)
         self._loaded = True
 
@@ -467,7 +469,7 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.objects_url, accept=accept,
+        return self._conn.get(self.objects_url, headers={"Accept": accept},
                               params=query_params)
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
@@ -477,7 +479,7 @@ class Collection(_TAXIIEndpoint):
         query_params = None
         if version:
             query_params = _filter_kwargs_to_query_params({"version": version})
-        return self._conn.get(url, accept=accept,
+        return self._conn.get(url, headers={"Accept": accept},
                               params=query_params)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
@@ -554,7 +556,7 @@ class Collection(_TAXIIEndpoint):
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(self.url + "manifest/",
-                              accept=accept,
+                              headers={"Accept": accept},
                               params=query_params)
 
 
@@ -653,7 +655,8 @@ class ApiRoot(_TAXIIEndpoint):
 
         This invokes the ``Get API Root Information`` endpoint.
         """
-        response = self.__raw = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url,
+                                               headers={"Accept": accept})
 
         self._title = response.get("title")  # required
         self._description = response.get("description")  # optional
@@ -669,7 +672,7 @@ class ApiRoot(_TAXIIEndpoint):
         This invokes the ``Get Collections`` endpoint.
         """
         url = self.url + "collections/"
-        response = self._conn.get(url, accept=accept)
+        response = self._conn.get(url, headers={"Accept": accept})
 
         self._collections = []
         for item in response.get("collections", []):  # optional
@@ -682,7 +685,7 @@ class ApiRoot(_TAXIIEndpoint):
 
     def get_status(self, status_id, accept=MEDIA_TYPE_TAXII_V20):
         status_url = self.url + "status/" + status_id + "/"
-        response = self._conn.get(status_url, accept=accept)
+        response = self._conn.get(status_url, headers={"Accept": accept})
         return Status(status_url, conn=self._conn, status_info=response)
 
 
@@ -765,8 +768,7 @@ class Server(_TAXIIEndpoint):
 
     def refresh(self):
         """Update the Server information and list of API Roots"""
-        response = self.__raw = self._conn.get(self.url,
-                                               accept=MEDIA_TYPE_TAXII_V20)
+        response = self.__raw = self._conn.get(self.url)
 
         self._title = response.get("title")  # required
         self._description = response.get("description")  # optional
@@ -841,30 +843,25 @@ class _HTTPConnection(object):
              content_type_tokens[0] == 'application/vnd.oasis.stix+json')
         )
 
-    def get(self, url, accept, params=None, headers=None):
+    def get(self, url, headers=None, params=None):
         """Perform an HTTP GET, using the saved requests.Session and auth info.
+        If "Accept" isn't one of the given headers, a default TAXII mime type is
+        used.  Regardless, the response type is checked against the accept
+        header value, and an exception is raised if they don't match.
 
         Args:
             url (str): URL to retrieve
-            accept (str): media type to include in the ``Accept:`` header. This
-                function checks that the ``Content-Type:`` header on the HTTP
-                response matches this media type.
             headers (dict): Any other headers to be added to the request.
             params: dictionary or bytes to be sent in the query string for the
                 request. (optional)
 
         """
 
-        # Let the "accept" param to this method override the content of
-        # the "headers" param.
-        if headers:
-            method_headers = requests.structures.CaseInsensitiveDict(headers)
-        else:
-            method_headers = {}
+        merged_headers = self._merge_headers(headers)
 
-        method_headers["Accept"] = accept
-
-        merged_headers = self._merge_headers(method_headers)
+        if "Accept" not in merged_headers:
+            merged_headers["Accept"] = MEDIA_TYPE_TAXII_V20
+        accept = merged_headers["Accept"]
 
         resp = self.session.get(url, headers=merged_headers, params=params)
 
@@ -883,6 +880,14 @@ class _HTTPConnection(object):
         URL query parameters, and the given JSON in the request body.  The
         extra query parameters are merged with any which already exist in the
         URL.
+
+        Args:
+            url (str): URL to retrieve
+            headers (dict): Any other headers to be added to the request.
+            params: dictionary or bytes to be sent in the query string for the
+                request. (optional)
+            data: data to post as dictionary, list of tuples, bytes, or
+                file-like object
         """
 
         merged_headers = self._merge_headers(headers)
