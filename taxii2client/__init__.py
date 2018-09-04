@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 
 import datetime
-import json
 import time
 
 import pytz
@@ -523,14 +522,8 @@ class Collection(_TAXIIEndpoint):
             "Content-Type": content_type,
         }
 
-        if isinstance(bundle, dict):
-            if six.PY2:
-                bundle = json.dumps(bundle, encoding="utf-8")
-            else:
-                bundle = json.dumps(bundle)
-
         status_json = self._conn.post(self.objects_url, headers=headers,
-                                      data=bundle)
+                                      json=bundle)
 
         status_url = urlparse.urljoin(
             self.url,
@@ -861,13 +854,34 @@ class _HTTPConnection(object):
 
         return _to_json(resp)
 
-    def post(self, url, headers=None, params=None, data=None):
+    def post(self, url, headers=None, params=None, **kwargs):
         """Send a JSON POST request with the given request headers, additional
         URL query parameters, and the given JSON in the request body.  The
         extra query parameters are merged with any which already exist in the
-        URL.
+        URL.  The 'json' and 'data' parameters may not both be given.
+
+        Args:
+            url (str): URL to retrieve
+            headers (dict): Any other headers to be added to the request.
+            params: dictionary or bytes to be sent in the query string for the
+                request. (optional)
+            json: json to send in the body of the Request.  This must be a
+                JSON-serializable object. (optional)
+            data: raw request body data.  May be a dictionary, list of tuples,
+                bytes, or file-like object to send in the body of the Request.
+                (optional)
         """
-        resp = self.session.post(url, headers=headers, params=params, data=data)
+
+        if len(kwargs) > 1:
+            raise InvalidArgumentsError("Too many extra args ({} > 1)".format(
+                len(kwargs)))
+
+        if kwargs:
+            kwarg = next(iter(kwargs))
+            if kwarg not in ("json", "data"):
+                raise InvalidArgumentsError("Invalid kwarg: " + kwarg)
+
+        resp = self.session.post(url, headers=headers, params=params, **kwargs)
         resp.raise_for_status()
         return _to_json(resp)
 

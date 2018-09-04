@@ -813,3 +813,16 @@ def test_collection_missing_can_write_property(collection_dict):
                    collection_info=collection_dict)
 
     assert "No 'can_write' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
+
+
+def test_conn_post_kwarg_errors():
+    conn = _HTTPConnection()
+
+    with pytest.raises(InvalidArgumentsError):
+        conn.post(DISCOVERY_URL, data=1, json=2)
+
+    with pytest.raises(InvalidArgumentsError):
+        conn.post(DISCOVERY_URL, data=1, foo=2)
+
+    with pytest.raises(InvalidArgumentsError):
+        conn.post(DISCOVERY_URL, foo=1)
