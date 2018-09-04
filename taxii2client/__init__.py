@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import datetime
+import json
 import time
 
 import pytz
@@ -493,7 +494,7 @@ class Collection(_TAXIIEndpoint):
         expires, or the operation completes.
 
         Args:
-            bundle (str): A STIX bundle with the objects to add.
+            bundle: A STIX bundle with the objects to add (string, dict, binary)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
             poll_interval (int): If waiting for completion, how often to poll
@@ -522,8 +523,22 @@ class Collection(_TAXIIEndpoint):
             "Content-Type": content_type,
         }
 
+        if isinstance(bundle, dict):
+            json_text = json.dumps(bundle, ensure_ascii=False)
+            data = json_text.encode("utf-8")
+
+        elif isinstance(bundle, six.text_type):
+            data = bundle.encode("utf-8")
+
+        elif isinstance(bundle, six.binary_type):
+            data = bundle
+
+        else:
+            raise TypeError("Don't know how to handle type '{}'".format(
+                type(bundle).__name__))
+
         status_json = self._conn.post(self.objects_url, headers=headers,
-                                      json=bundle)
+                                      data=data)
 
         status_url = urlparse.urljoin(
             self.url,

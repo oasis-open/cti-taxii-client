@@ -534,6 +534,34 @@ def test_add_object_to_collection_dict(writable_collection):
 
 
 @responses.activate
+def test_add_object_to_collection_bin(writable_collection):
+    responses.add(responses.POST, ADD_WRITABLE_OBJECTS_URL,
+                  ADD_OBJECTS_RESPONSE, status=202,
+                  content_type=MEDIA_TYPE_TAXII_V20)
+
+    bin_bundle = STIX_BUNDLE.encode("utf-8")
+
+    status = writable_collection.add_objects(bin_bundle)
+
+    assert status.status == "complete"
+    assert status.total_count == 1
+    assert status.success_count == 1
+    assert len(status.successes) == 1
+    assert status.failure_count == 0
+    assert status.pending_count == 0
+
+
+@responses.activate
+def test_add_object_to_collection_badtype(writable_collection):
+    responses.add(responses.POST, ADD_WRITABLE_OBJECTS_URL,
+                  ADD_OBJECTS_RESPONSE, status=202,
+                  content_type=MEDIA_TYPE_TAXII_V20)
+
+    with pytest.raises(TypeError):
+        writable_collection.add_objects([1, 2, 3])
+
+
+@responses.activate
 def test_add_object_rases_error_when_collection_id_does_not_match_url(
         bad_writable_collection):
     responses.add(responses.POST, ADD_OBJECTS_URL, ADD_OBJECTS_RESPONSE,
