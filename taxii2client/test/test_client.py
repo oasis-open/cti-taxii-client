@@ -6,10 +6,10 @@ import responses
 import six
 
 from taxii2client import (
-    MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError, ApiRoot,
-    Collection, InvalidArgumentsError, InvalidJSONError, Server, Status,
-    TAXIIServiceException, ValidationError, _filter_kwargs_to_query_params,
-    _HTTPConnection, _TAXIIEndpoint
+    DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError,
+    ApiRoot, Collection, InvalidArgumentsError, InvalidJSONError, Server,
+    Status, TAXIIServiceException, ValidationError,
+    _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
 )
 
 TAXII_SERVER = "example.com"
@@ -697,7 +697,8 @@ def test_valid_content_type_for_connection():
                   content_type=MEDIA_TYPE_TAXII_V20 + "; charset=utf-8")
 
     conn = _HTTPConnection(user="foo", password="bar", verify=False)
-    conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/", MEDIA_TYPE_TAXII_V20, None)
+    conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+             headers={"Accept": MEDIA_TYPE_TAXII_V20})
 
 
 @responses.activate
@@ -708,7 +709,8 @@ def test_invalid_content_type_for_connection():
 
     with pytest.raises(TAXIIServiceException) as excinfo:
         conn = _HTTPConnection(user="foo", password="bar", verify=False)
-        conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/", MEDIA_TYPE_TAXII_V20 + "; charset=utf-8", None)
+        conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                 headers={"Accept": MEDIA_TYPE_TAXII_V20 + "; charset=utf-8"})
 
     assert ("Unexpected Response. Got Content-Type: 'application/vnd.oasis.taxii+json; "
             "version=2.0' for Accept: 'application/vnd.oasis.taxii+json; version=2.0; "
@@ -813,3 +815,58 @@ def test_collection_missing_can_write_property(collection_dict):
                    collection_info=collection_dict)
 
     assert "No 'can_write' in Collection for request 'https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/'" == str(excinfo.value)
+
+
+def test_user_agent_defaulting():
+    conn = _HTTPConnection(user_agent="foo/1.0")
+    headers = conn._merge_headers({})
+
+    # also test key access is case-insensitive
+    assert headers["user-agent"] == "foo/1.0"
+
+
+def test_user_agent_overriding():
+    conn = _HTTPConnection(user_agent="foo/1.0")
+    headers = conn._merge_headers({"User-Agent": "bar/2.0"})
+
+    assert headers["user-agent"] == "bar/2.0"
+
+
+def test_user_agent_enforcing1():
+    conn = _HTTPConnection(user_agent=None)
+    headers = conn._merge_headers({})
+
+    assert headers["user-agent"] == DEFAULT_USER_AGENT
+
+
+def test_user_agent_enforcing2():
+    conn = _HTTPConnection()
+    headers = conn._merge_headers({"User-Agent": None})
+
+    assert headers["user-agent"] == DEFAULT_USER_AGENT
+
+
+def test_user_agent_enforcing3():
+    conn = _HTTPConnection(user_agent=None)
+    headers = conn._merge_headers({"User-Agent": None})
+
+    assert headers["user-agent"] == DEFAULT_USER_AGENT
+
+
+def test_header_merging():
+    conn = _HTTPConnection()
+    headers = conn._merge_headers({"AddedHeader": "addedvalue"})
+
+    assert headers == {
+        "user-agent": DEFAULT_USER_AGENT,
+        "addedheader": "addedvalue"
+    }
+
+
+def test_header_merge_none():
+    conn = _HTTPConnection()
+    headers = conn._merge_headers(None)
+
+    assert headers == {
+        "user-agent": DEFAULT_USER_AGENT
+    }
