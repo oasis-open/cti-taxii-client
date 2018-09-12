@@ -498,7 +498,7 @@ class Collection(_TAXIIEndpoint):
         expires, or the operation completes.
 
         Args:
-            bundle (str): A STIX bundle with the objects to add.
+            bundle: A STIX bundle with the objects to add (string, dict, binary)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
             poll_interval (int): If waiting for completion, how often to poll
@@ -528,13 +528,21 @@ class Collection(_TAXIIEndpoint):
         }
 
         if isinstance(bundle, dict):
-            if six.PY2:
-                bundle = json.dumps(bundle, encoding="utf-8")
-            else:
-                bundle = json.dumps(bundle)
+            json_text = json.dumps(bundle, ensure_ascii=False)
+            data = json_text.encode("utf-8")
+
+        elif isinstance(bundle, six.text_type):
+            data = bundle.encode("utf-8")
+
+        elif isinstance(bundle, six.binary_type):
+            data = bundle
+
+        else:
+            raise TypeError("Don't know how to handle type '{}'".format(
+                type(bundle).__name__))
 
         status_json = self._conn.post(self.objects_url, headers=headers,
-                                      data=bundle)
+                                      data=data)
 
         status_url = urlparse.urljoin(
             self.url,
@@ -875,25 +883,34 @@ class _HTTPConnection(object):
 
         return _to_json(resp)
 
-    def post(self, url, headers=None, params=None, data=None):
+    def post(self, url, headers=None, params=None, **kwargs):
         """Send a JSON POST request with the given request headers, additional
         URL query parameters, and the given JSON in the request body.  The
         extra query parameters are merged with any which already exist in the
-        URL.
+        URL.  The 'json' and 'data' parameters may not both be given.
 
         Args:
             url (str): URL to retrieve
             headers (dict): Any other headers to be added to the request.
             params: dictionary or bytes to be sent in the query string for the
                 request. (optional)
-            data: data to post as dictionary, list of tuples, bytes, or
-                file-like object
+            json: json to send in the body of the Request.  This must be a
+                JSON-serializable object. (optional)
+            data: raw request body data.  May be a dictionary, list of tuples,
+                bytes, or file-like object to send in the body of the Request.
+                (optional)
         """
 
-        merged_headers = self._merge_headers(headers)
+        if len(kwargs) > 1:
+            raise InvalidArgumentsError("Too many extra args ({} > 1)".format(
+                len(kwargs)))
 
-        resp = self.session.post(url, headers=merged_headers, params=params,
-                                 data=data)
+        if kwargs:
+            kwarg = next(iter(kwargs))
+            if kwarg not in ("json", "data"):
+                raise InvalidArgumentsError("Invalid kwarg: " + kwarg)
+
+        resp = self.session.post(url, headers=headers, params=params, **kwargs)
         resp.raise_for_status()
         return _to_json(resp)
 
