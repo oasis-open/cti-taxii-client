@@ -8,6 +8,7 @@ import time
 
 import pytz
 import requests
+import requests.structures  # is this public API?
 import six
 import six.moves.urllib.parse as urlparse
 
@@ -15,6 +16,7 @@ __version__ = '0.3.1'
 
 MEDIA_TYPE_STIX_V20 = "application/vnd.oasis.stix+json; version=2.0"
 MEDIA_TYPE_TAXII_V20 = "application/vnd.oasis.taxii+json; version=2.0"
+DEFAULT_USER_AGENT = "taxii2-client/" + __version__
 
 
 class TAXIIServiceException(Exception):
@@ -217,7 +219,8 @@ class Status(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Updates Status information"""
-        response = self.__raw = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url,
+                                               headers={"Accept": accept})
         self._populate_fields(**response)
 
     def wait_until_final(self, poll_interval=1, timeout=60):
@@ -457,7 +460,8 @@ class Collection(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update Collection information"""
-        response = self.__raw = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url,
+                                               headers={"Accept": accept})
         self._populate_fields(**response)
         self._loaded = True
 
@@ -465,7 +469,7 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.objects_url, accept=accept,
+        return self._conn.get(self.objects_url, headers={"Accept": accept},
                               params=query_params)
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
@@ -475,7 +479,7 @@ class Collection(_TAXIIEndpoint):
         query_params = None
         if version:
             query_params = _filter_kwargs_to_query_params({"version": version})
-        return self._conn.get(url, accept=accept,
+        return self._conn.get(url, headers={"Accept": accept},
                               params=query_params)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
@@ -560,7 +564,7 @@ class Collection(_TAXIIEndpoint):
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(self.url + "manifest/",
-                              accept=accept,
+                              headers={"Accept": accept},
                               params=query_params)
 
 
@@ -659,7 +663,8 @@ class ApiRoot(_TAXIIEndpoint):
 
         This invokes the ``Get API Root Information`` endpoint.
         """
-        response = self.__raw = self._conn.get(self.url, accept=accept)
+        response = self.__raw = self._conn.get(self.url,
+                                               headers={"Accept": accept})
 
         self._title = response.get("title")  # required
         self._description = response.get("description")  # optional
@@ -675,7 +680,7 @@ class ApiRoot(_TAXIIEndpoint):
         This invokes the ``Get Collections`` endpoint.
         """
         url = self.url + "collections/"
-        response = self._conn.get(url, accept=accept)
+        response = self._conn.get(url, headers={"Accept": accept})
 
         self._collections = []
         for item in response.get("collections", []):  # optional
@@ -688,7 +693,7 @@ class ApiRoot(_TAXIIEndpoint):
 
     def get_status(self, status_id, accept=MEDIA_TYPE_TAXII_V20):
         status_url = self.url + "status/" + status_id + "/"
-        response = self._conn.get(status_url, accept=accept)
+        response = self._conn.get(status_url, headers={"Accept": accept})
         return Status(status_url, conn=self._conn, status_info=response)
 
 
@@ -771,8 +776,7 @@ class Server(_TAXIIEndpoint):
 
     def refresh(self):
         """Update the Server information and list of API Roots"""
-        response = self.__raw = self._conn.get(self.url,
-                                               accept=MEDIA_TYPE_TAXII_V20)
+        response = self.__raw = self._conn.get(self.url)
 
         self._title = response.get("title")  # required
         self._description = response.get("description")  # optional
@@ -809,17 +813,22 @@ class _HTTPConnection(object):
 
     """
 
-    def __init__(self, user=None, password=None, verify=True, proxies=None):
+    def __init__(self, user=None, password=None, verify=True, proxies=None,
+                 user_agent=DEFAULT_USER_AGENT):
         """Create a connection session.
 
         Args:
             user (str): username for authentication (optional)
             password (str): password for authentication (optional)
             verify (bool): validate the entity credentials. (default: True)
-
+            user_agent (str): A value to use for the User-Agent header in
+                requests.  If not given, use a default value which represents
+                this library.
         """
         self.session = requests.Session()
         self.session.verify = verify
+        # enforce that we always have a connection-default user agent.
+        self.user_agent = user_agent or DEFAULT_USER_AGENT
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
         if proxies:
@@ -842,22 +851,27 @@ class _HTTPConnection(object):
              content_type_tokens[0] == 'application/vnd.oasis.stix+json')
         )
 
-    def get(self, url, accept, params=None):
+    def get(self, url, headers=None, params=None):
         """Perform an HTTP GET, using the saved requests.Session and auth info.
+        If "Accept" isn't one of the given headers, a default TAXII mime type is
+        used.  Regardless, the response type is checked against the accept
+        header value, and an exception is raised if they don't match.
 
         Args:
             url (str): URL to retrieve
-            accept (str): media type to include in the ``Accept:`` header. This
-                function checks that the ``Content-Type:`` header on the HTTP
-                response matches this media type.
+            headers (dict): Any other headers to be added to the request.
             params: dictionary or bytes to be sent in the query string for the
                 request. (optional)
 
         """
-        headers = {
-            "Accept": accept
-        }
-        resp = self.session.get(url, headers=headers, params=params)
+
+        merged_headers = self._merge_headers(headers)
+
+        if "Accept" not in merged_headers:
+            merged_headers["Accept"] = MEDIA_TYPE_TAXII_V20
+        accept = merged_headers["Accept"]
+
+        resp = self.session.get(url, headers=merged_headers, params=params)
 
         resp.raise_for_status()
 
@@ -903,6 +917,42 @@ class _HTTPConnection(object):
     def close(self):
         """Closes connections.  This object is no longer usable."""
         self.session.close()
+
+    def _merge_headers(self, call_specific_headers):
+        """
+        Merge headers from different sources together.  Headers passed to the
+        post/get methods have highest priority, then headers associated with
+        the connection object itself have next priority.
+
+        :param call_specific_headers: A header dict from the get/post call, or
+            None (the default for those methods).
+        :return: A key-case-insensitive MutableMapping object which contains
+            the merged headers.  (This doesn't actually return a dict.)
+        """
+
+        # A case-insensitive mapping is necessary here so that there is
+        # predictable behavior.  If a plain dict were used, you'd get keys in
+        # the merged dict which differ only in case.  The requests library
+        # would merge them internally, and it would be unpredictable which key
+        # is chosen for the final set of headers.  Another possible approach
+        # would be to upper/lower-case everything, but this seemed easier.  On
+        # the other hand, I don't know if CaseInsensitiveDict is public API...?
+
+        # First establish defaults
+        merged_headers = requests.structures.CaseInsensitiveDict({
+            "User-Agent": self.user_agent
+        })
+
+        # Then overlay with specifics from post/get methods
+        if call_specific_headers:
+            merged_headers.update(call_specific_headers)
+
+        # Special "User-Agent" header check, to ensure one is always sent.
+        # The call-specific overlay could have null'd out that header.
+        if not merged_headers.get("User-Agent"):
+            merged_headers["User-Agent"] = self.user_agent
+
+        return merged_headers
 
 
 def _to_json(resp):
