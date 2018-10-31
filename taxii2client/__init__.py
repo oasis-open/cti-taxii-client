@@ -12,7 +12,7 @@ import requests.structures  # is this public API?
 import six
 import six.moves.urllib.parse as urlparse
 
-__version__ = '0.3.1'
+__version__ = '0.4.0'
 
 MEDIA_TYPE_STIX_V20 = "application/vnd.oasis.stix+json; version=2.0"
 MEDIA_TYPE_TAXII_V20 = "application/vnd.oasis.taxii+json; version=2.0"
