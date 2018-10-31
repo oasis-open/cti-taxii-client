@@ -3,14 +3,17 @@ from codecs import open
 
 from setuptools import find_packages, setup
 
-with open('README.rst')as f:
-    long_description = f.read()
+
+def get_long_description():
+    with open('README.rst')as f:
+        return f.read()
+
 
 setup(
     name='taxii2-client',
     version='0.3.1',
     description='TAXII 2 Client Library',
-    long_description=long_description,
+    long_description=get_long_description(),
     url='https://github.com/oasis-open/cti-taxii-client',
     author='OASIS Cyber Threat Intelligence Technical Committee',
     author_email='cti-users@lists.oasis-open.org',
