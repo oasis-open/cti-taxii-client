@@ -217,6 +217,10 @@ class Status(_TAXIIEndpoint):
         """Get the "raw" status response (parsed JSON)."""
         return self.__raw
 
+    @property
+    def custom_properties(self):
+        return self._custom_properties
+
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Updates Status information"""
         response = self.__raw = self._conn.get(self.url,
@@ -244,7 +248,8 @@ class Status(_TAXIIEndpoint):
     def _populate_fields(self, id=None, status=None, total_count=None,
                          success_count=None, failure_count=None,
                          pending_count=None, request_timestamp=None,
-                         successes=None, failures=None, pendings=None):
+                         successes=None, failures=None, pendings=None,
+                         **kwargs):
         self.id = id  # required
         self.status = status  # required
         self.request_timestamp = request_timestamp  # optional
@@ -255,6 +260,9 @@ class Status(_TAXIIEndpoint):
         self.successes = successes or []  # optional
         self.failures = failures or []  # optional
         self.pendings = pendings or []  # optional
+
+        # Anything not captured by the optional arguments is treated as custom
+        self._custom_properties = kwargs
 
         self._validate_status()
 
@@ -401,6 +409,11 @@ class Collection(_TAXIIEndpoint):
         return self._media_types
 
     @property
+    def custom_properties(self):
+        self._ensure_loaded()
+        return self._custom_properties
+
+    @property
     def objects_url(self):
         return self.url + "objects/"
 
@@ -411,13 +424,17 @@ class Collection(_TAXIIEndpoint):
         return self.__raw
 
     def _populate_fields(self, id=None, title=None, description=None,
-                         can_read=None, can_write=None, media_types=None):
+                         can_read=None, can_write=None, media_types=None,
+                         **kwargs):
         self._id = id  # required
         self._title = title  # required
         self._description = description  # optional
         self._can_read = can_read  # required
         self._can_write = can_write  # required
         self._media_types = media_types or []  # optional
+
+        # Anything not captured by the optional arguments is treated as custom
+        self._custom_properties = kwargs
 
         self._validate_collection()
 
@@ -629,6 +646,11 @@ class ApiRoot(_TAXIIEndpoint):
         return self._max_content_length
 
     @property
+    def custom_properties(self):
+        self._ensure_loaded_information()
+        return self._custom_properties
+
+    @property
     def _raw(self):
         """Get the "raw" API root information response (parsed JSON)."""
         self._ensure_loaded_information()
@@ -653,6 +675,18 @@ class ApiRoot(_TAXIIEndpoint):
             msg = "No 'max_content_length' in API Root for request '{}'"
             raise ValidationError(msg.format(self.url))
 
+    def _populate_fields(self, title=None, description=None, versions=None,
+                         max_content_length=None, **kwargs):
+        self._title = title  # required
+        self._description = description  # optional
+        self._versions = versions or []  # required
+        self._max_content_length = max_content_length  # required
+
+        # Anything not captured by the optional arguments is treated as custom
+        self._custom_properties = kwargs
+
+        self._validate_api_root()
+
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update the API Root's information and list of Collections"""
         self.refresh_information(accept)
@@ -665,13 +699,7 @@ class ApiRoot(_TAXIIEndpoint):
         """
         response = self.__raw = self._conn.get(self.url,
                                                headers={"Accept": accept})
-
-        self._title = response.get("title")  # required
-        self._description = response.get("description")  # optional
-        self._versions = response.get("versions", [])  # required
-        self._max_content_length = response.get("max_content_length")  # required
-
-        self._validate_api_root()
+        self._populate_fields(**response)
         self._loaded_information = True
 
     def refresh_collections(self, accept=MEDIA_TYPE_TAXII_V20):
@@ -758,6 +786,11 @@ class Server(_TAXIIEndpoint):
         return self._api_roots
 
     @property
+    def custom_properties(self):
+        self._ensure_loaded()
+        return self._custom_properties
+
+    @property
     def _raw(self):
         """Get the "raw" server discovery response (parsed JSON)."""
         self._ensure_loaded()
@@ -774,14 +807,12 @@ class Server(_TAXIIEndpoint):
             msg = "No 'title' in Server Discovery for request '{}'"
             raise ValidationError(msg.format(self.url))
 
-    def refresh(self):
-        """Update the Server information and list of API Roots"""
-        response = self.__raw = self._conn.get(self.url)
-
-        self._title = response.get("title")  # required
-        self._description = response.get("description")  # optional
-        self._contact = response.get("contact")  # optional
-        roots = response.get("api_roots", [])  # optional
+    def _populate_fields(self, title=None, description=None, contact=None,
+                         api_roots=None, default=None, **kwargs):
+        self._title = title  # required
+        self._description = description  # optional
+        self._contact = contact  # optional
+        roots = api_roots or []  # optional
         self._api_roots = [ApiRoot(url,
                                    user=self._user,
                                    password=self._password,
@@ -791,9 +822,17 @@ class Server(_TAXIIEndpoint):
         # rather than creating a duplicate. The TAXII 2.0 spec says that the
         # `default` API Root MUST be an item in `api_roots`.
         root_dict = dict(zip(roots, self._api_roots))
-        self._default = root_dict.get(response.get("default"))  # optional
+        self._default = root_dict.get(default)  # optional
+
+        # Anything not captured by the optional arguments is treated as custom
+        self._custom_properties = kwargs
+
         self._validate_server()
 
+    def refresh(self):
+        """Update the Server information and list of API Roots"""
+        response = self.__raw = self._conn.get(self.url)
+        self._populate_fields(**response)
         self._loaded = True
 
 
