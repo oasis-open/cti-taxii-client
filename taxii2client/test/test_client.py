@@ -911,3 +911,52 @@ def test_header_merge_none():
     assert headers == {
         "user-agent": DEFAULT_USER_AGENT
     }
+
+
+def test_collection_with_custom_properties(collection_dict):
+    collection_dict["type"] = "domain"
+    col_obj = Collection(url=WRITABLE_COLLECTION_URL, collection_info=collection_dict)
+    assert len(col_obj.custom_properties) == 1
+    assert col_obj.custom_properties["type"] == "domain"
+
+
+def test_status_with_custom_properties(status_dict):
+    status_dict["x_example_com"] = "some value"
+    status_obj = Status(url=COLLECTION_URL, status_info=status_dict)
+    assert len(status_obj.custom_properties) == 1
+    assert status_obj.custom_properties["x_example_com"] == "some value"
+
+
+@responses.activate
+def test_api_roots_with_custom_properties(api_root):
+    response = """{
+      "title": "Malware Research Group",
+      "description": "A trust group setup for malware researchers",
+      "versions": ["taxii-2.0"],
+      "max_content_length": 9765625,
+      "x_example_com_total_items": 1000
+    }"""
+    set_api_root_response(response)
+    api_root.refresh_information()
+    assert len(api_root.custom_properties) == 1
+    assert api_root.custom_properties["x_example_com_total_items"] == 1000
+
+
+@responses.activate
+def test_server_with_custom_properties(server):
+    response = """{
+      "title": "Some TAXII Server",
+      "description": "This TAXII Server contains a listing of...",
+      "contact": "string containing contact information",
+      "default": "https://example.com/api2/",
+      "api_roots": [
+        "https://example.com/api1/",
+        "https://example.com/api2/",
+        "https://example.net/trustgroup1/"
+      ],
+      "x_example_com": "some value"
+    }"""
+    set_discovery_response(response)
+    server.refresh()
+    assert len(server.custom_properties) == 1
+    assert server.custom_properties["x_example_com"] == "some value"
