@@ -141,7 +141,8 @@ class _TAXIIEndpoint(object):
     resources are released.
 
     """
-    def __init__(self, url, conn=None, user=None, password=None, verify=True):
+    def __init__(self, url, conn=None, user=None, password=None, verify=True,
+                 proxies=None):
         """Create a TAXII endpoint.
 
         Args:
@@ -157,7 +158,7 @@ class _TAXIIEndpoint(object):
         elif conn:
             self._conn = conn
         else:
-            self._conn = _HTTPConnection(user, password, verify)
+            self._conn = _HTTPConnection(user, password, verify, proxies)
 
         # Add trailing slash to TAXII endpoint if missing
         # https://github.com/oasis-open/cti-taxii-client/issues/50
@@ -607,7 +608,8 @@ class ApiRoot(_TAXIIEndpoint):
 
     """
 
-    def __init__(self, url, conn=None, user=None, password=None, verify=True):
+    def __init__(self, url, conn=None, user=None, password=None, verify=True,
+                 proxies=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -618,7 +620,7 @@ class ApiRoot(_TAXIIEndpoint):
                 to providing username/password
 
         """
-        super(ApiRoot, self).__init__(url, conn, user, password, verify)
+        super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies)
 
         self._loaded_collections = False
         self._loaded_information = False
@@ -746,7 +748,8 @@ class Server(_TAXIIEndpoint):
 
     """
 
-    def __init__(self, url, conn=None, user=None, password=None, verify=True):
+    def __init__(self, url, conn=None, user=None, password=None, verify=True,
+                 proxies=None):
         """Create a server discovery endpoint.
 
         Args:
@@ -757,11 +760,12 @@ class Server(_TAXIIEndpoint):
                 to providing username/password
 
         """
-        super(Server, self).__init__(url, conn, user, password, verify)
+        super(Server, self).__init__(url, conn, user, password, verify, proxies)
 
         self._user = user
         self._password = password
         self._verify = verify
+        self._proxies = proxies
         self._loaded = False
         self.__raw = None
 
@@ -821,7 +825,8 @@ class Server(_TAXIIEndpoint):
         self._api_roots = [ApiRoot(url,
                                    user=self._user,
                                    password=self._password,
-                                   verify=self._verify)
+                                   verify=self._verify,
+                                   proxies=self._proxies)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.0 spec says that the
