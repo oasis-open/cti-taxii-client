@@ -960,3 +960,15 @@ def test_server_with_custom_properties(server):
     server.refresh()
     assert len(server.custom_properties) == 1
     assert server.custom_properties["x_example_com"] == "some value"
+
+
+@responses.activate
+def test_collection_missing_trailing_slash():
+    set_collection_response()
+    collection = Collection(COLLECTION_URL[:-1])
+    responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
+                  status=200, content_type="%s; charset=utf-8" % MEDIA_TYPE_STIX_V20)
+
+    response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
+    indicator = response["objects"][0]
+    assert indicator["id"] == "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
