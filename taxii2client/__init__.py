@@ -159,7 +159,12 @@ class _TAXIIEndpoint(object):
         else:
             self._conn = _HTTPConnection(user, password, verify)
 
-        self.url = url
+        # Add trailing slash to TAXII endpoint if missing
+        # https://github.com/oasis-open/cti-taxii-client/issues/50
+        if url[-1] == "/":
+            self.url = url
+        else:
+            self.url = url + "/"
 
     def close(self):
         self._conn.close()
