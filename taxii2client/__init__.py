@@ -150,6 +150,8 @@ class _TAXIIEndpoint(object):
             password (str): password for authentication (optional)
             verify (bool): validate the entity credentials (default: True)
             conn (_HTTPConnection): A connection to reuse (optional)
+            proxies (dict): key/value pair for http/https proxy settings.
+                (optional)
 
         """
         if conn and (user or password):
@@ -191,7 +193,7 @@ class Status(_TAXIIEndpoint):
     # aren't other endpoints to call on the Status object.
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 status_info=None):
+                 proxies=None, status_info=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -203,9 +205,12 @@ class Status(_TAXIIEndpoint):
             status_info (dict): Parsed JSON representing a response from the
                 status endpoint, if already known.  If not given, the
                 endpoint will be queried. (optional)
+            verify (bool): validate the entity credentials. (default: True)
+            proxies (dict): key/value pair for http/https proxy settings.
+                (optional)
 
         """
-        super(Status, self).__init__(url, conn, user, password, verify)
+        super(Status, self).__init__(url, conn, user, password, verify, proxies)
         self.__raw = None
         if status_info:
             self._populate_fields(**status_info)
@@ -349,7 +354,7 @@ class Collection(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 collection_info=None):
+                 proxies=None, collection_info=None):
         """
         Initialize a new Collection.  Either user/password or conn may be
         given, but not both.  The latter is intended for internal use, when
@@ -367,10 +372,13 @@ class Collection(_TAXIIEndpoint):
                 `True` (optional)
             conn (_HTTPConnection): A connection to reuse (optional)
             collection_info: Collection metadata, if known in advance (optional)
+            verify (bool): validate the entity credentials. (default: True)
+            proxies (dict): key/value pair for http/https proxy settings.
+                (optional)
 
         """
 
-        super(Collection, self).__init__(url, conn, user, password, verify)
+        super(Collection, self).__init__(url, conn, user, password, verify, proxies)
 
         self._loaded = False
         self.__raw = None
@@ -618,6 +626,9 @@ class ApiRoot(_TAXIIEndpoint):
             password (str): password for authentication (optional)
             conn (_HTTPConnection): reuse connection object, as an alternative
                 to providing username/password
+            verify (bool): validate the entity credentials. (default: True)
+            proxies (dict): key/value pair for http/https proxy settings.
+                (optional)
 
         """
         super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies)
@@ -758,6 +769,9 @@ class Server(_TAXIIEndpoint):
             password (str): password for authentication (optional)
             conn (_HTTPConnection): reuse connection object, as an alternative
                 to providing username/password
+            verify (bool): validate the entity credentials. (default: True)
+            proxies (dict): key/value pair for http/https proxy settings.
+                (optional)
 
         """
         super(Server, self).__init__(url, conn, user, password, verify, proxies)
@@ -870,6 +884,8 @@ class _HTTPConnection(object):
             user (str): username for authentication (optional)
             password (str): password for authentication (optional)
             verify (bool): validate the entity credentials. (default: True)
+            proxies (dict): key/value pair for http/https proxy settings.
+                (optional)
             user_agent (str): A value to use for the User-Agent header in
                 requests.  If not given, use a default value which represents
                 this library.
