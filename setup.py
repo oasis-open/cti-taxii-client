@@ -11,7 +11,7 @@ def get_long_description():
 
 setup(
     name='taxii2-client',
-    version='0.4.0',
+    version='0.5.0',
     description='TAXII 2 Client Library',
     long_description=get_long_description(),
     url='https://github.com/oasis-open/cti-taxii-client',
