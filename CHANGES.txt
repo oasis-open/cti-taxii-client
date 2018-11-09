@@ -1,3 +1,9 @@
+Version 0.5.0
+2018-11-09
+- #50 Fix an issue regarding trailing slash being missing in the Endpoint url
+- #51 Expose `proxies` to all Endpoint for better flexibility
+- #53 Better handling of custom content. It is now stored in the `custom_properties` dictionary
+
 Version 0.4.0
 2018-10-31
 - #36 Added "proxies" argument to _HTTPConnection.
