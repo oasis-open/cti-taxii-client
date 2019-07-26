@@ -5,7 +5,7 @@ import pytest
 import responses
 import six
 
-from taxii2client import (
+from taxii2client.v20 import (
     DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError,
     ApiRoot, Collection, InvalidArgumentsError, InvalidJSONError, Server,
     Status, TAXIIServiceException, ValidationError,
