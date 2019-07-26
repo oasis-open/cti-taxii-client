@@ -19,32 +19,6 @@ MEDIA_TYPE_TAXII_V20 = "application/vnd.oasis.taxii+json; version=2.0"
 DEFAULT_USER_AGENT = "taxii2-client/" + __version__
 
 
-class TAXIIServiceException(Exception):
-    """Base class for exceptions raised by this library."""
-    pass
-
-
-class InvalidArgumentsError(TAXIIServiceException):
-    """Invalid arguments were passed to a method."""
-    pass
-
-
-class AccessError(TAXIIServiceException):
-    """Attempt was made to read/write to a collection when the collection
-    doesn't allow that operation."""
-    pass
-
-
-class ValidationError(TAXIIServiceException):
-    """Data validation failed for a property or group of properties"""
-    pass
-
-
-class InvalidJSONError(TAXIIServiceException):
-    """A server endpoint gave us invalid JSON"""
-    pass
-
-
 def _format_datetime(dttm):
     """Convert a datetime object into a valid STIX timestamp string.
 
