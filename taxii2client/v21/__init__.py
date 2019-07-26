@@ -17,8 +17,8 @@ from ..exceptions import (AccessError, InvalidArgumentsError,
                           ValidationError)
 from ..version import __version__
 
-MEDIA_TYPE_STIX_V20 = "application/vnd.oasis.stix+json; version=2.0"
-MEDIA_TYPE_TAXII_V20 = "application/vnd.oasis.taxii+json; version=2.0"
+MEDIA_TYPE_STIX_V21 = "application/vnd.oasis.stix+json; version=2.1"
+MEDIA_TYPE_TAXII_V21 = "application/vnd.oasis.taxii+json; version=2.1"
 DEFAULT_USER_AGENT = "taxii2-client/" + __version__
 
 
@@ -209,7 +209,7 @@ class Status(_TAXIIEndpoint):
     def custom_properties(self):
         return self._custom_properties
 
-    def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
+    def refresh(self, accept=MEDIA_TYPE_TAXII_V21):
         """Updates Status information"""
         response = self.__raw = self._conn.get(self.url,
                                                headers={"Accept": accept})
@@ -466,21 +466,21 @@ class Collection(_TAXIIEndpoint):
             msg = "Collection '{}' does not allow writing."
             raise AccessError(msg.format(self.url))
 
-    def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
+    def refresh(self, accept=MEDIA_TYPE_TAXII_V21):
         """Update Collection information"""
         response = self.__raw = self._conn.get(self.url,
                                                headers={"Accept": accept})
         self._populate_fields(**response)
         self._loaded = True
 
-    def get_objects(self, accept=MEDIA_TYPE_STIX_V20, **filter_kwargs):
+    def get_objects(self, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(self.objects_url, headers={"Accept": accept},
                               params=query_params)
 
-    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
+    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V21):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/"
@@ -490,9 +490,25 @@ class Collection(_TAXIIEndpoint):
         return self._conn.get(url, headers={"Accept": accept},
                               params=query_params)
 
+    def delete_object(self, obj_id, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+        """Implement the ``Delete an Object`` endpoint (section 5.7)"""
+        self._verify_can_write()
+        url = self.objects_url + str(obj_id) + "/"
+        query_params = _filter_kwargs_to_query_params(filter_kwargs)
+        return self._conn.delete(url, headers={"Accept": accept},
+                                 params=query_params)
+
+    def object_versions(self, obj_id, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+        """Implement the ``Get Object Versions`` endpoint (section 5.8)"""
+        self._verify_can_read()
+        url = self.objects_url + str(obj_id) + "/versions/"
+        query_params = _filter_kwargs_to_query_params(filter_kwargs)
+        return self._conn.get(url, headers={"Accept": accept},
+                              params=query_params)
+
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
-                    timeout=60, accept=MEDIA_TYPE_TAXII_V20,
-                    content_type=MEDIA_TYPE_STIX_V20):
+                    timeout=60, accept=MEDIA_TYPE_TAXII_V21,
+                    content_type=MEDIA_TYPE_STIX_V21):
         """Implement the ``Add Objects`` endpoint (section 5.4)
 
         Add objects to the collection.  This may be performed either
@@ -567,7 +583,7 @@ class Collection(_TAXIIEndpoint):
 
         return status
 
-    def get_manifest(self, accept=MEDIA_TYPE_TAXII_V20, **filter_kwargs):
+    def get_manifest(self, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
@@ -682,12 +698,12 @@ class ApiRoot(_TAXIIEndpoint):
 
         self._validate_api_root()
 
-    def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
+    def refresh(self, accept=MEDIA_TYPE_TAXII_V21):
         """Update the API Root's information and list of Collections"""
         self.refresh_information(accept)
         self.refresh_collections(accept)
 
-    def refresh_information(self, accept=MEDIA_TYPE_TAXII_V20):
+    def refresh_information(self, accept=MEDIA_TYPE_TAXII_V21):
         """Update the properties of this API Root.
 
         This invokes the ``Get API Root Information`` endpoint.
@@ -697,7 +713,7 @@ class ApiRoot(_TAXIIEndpoint):
         self._populate_fields(**response)
         self._loaded_information = True
 
-    def refresh_collections(self, accept=MEDIA_TYPE_TAXII_V20):
+    def refresh_collections(self, accept=MEDIA_TYPE_TAXII_V21):
         """Update the list of Collections contained by this API Root.
 
         This invokes the ``Get Collections`` endpoint.
@@ -714,7 +730,7 @@ class ApiRoot(_TAXIIEndpoint):
 
         self._loaded_collections = True
 
-    def get_status(self, status_id, accept=MEDIA_TYPE_TAXII_V20):
+    def get_status(self, status_id, accept=MEDIA_TYPE_TAXII_V21):
         status_url = self.url + "status/" + status_id + "/"
         response = self._conn.get(status_url, headers={"Accept": accept})
         return Status(status_url, conn=self._conn, status_info=response)
@@ -910,7 +926,7 @@ class _HTTPConnection(object):
         merged_headers = self._merge_headers(headers)
 
         if "Accept" not in merged_headers:
-            merged_headers["Accept"] = MEDIA_TYPE_TAXII_V20
+            merged_headers["Accept"] = MEDIA_TYPE_TAXII_V21
         accept = merged_headers["Accept"]
 
         resp = self.session.get(url, headers=merged_headers, params=params)
@@ -953,6 +969,13 @@ class _HTTPConnection(object):
                 raise InvalidArgumentsError("Invalid kwarg: " + kwarg)
 
         resp = self.session.post(url, headers=headers, params=params, **kwargs)
+        resp.raise_for_status()
+        return _to_json(resp)
+
+    def delete(self, url, headers=None, params=None, **kwargs):
+        """Perform HTTP DELETE"""
+        # TODO: May need more work...
+        resp = self.session.delete(url, headers=headers, params=params, **kwargs)
         resp.raise_for_status()
         return _to_json(resp)
 
