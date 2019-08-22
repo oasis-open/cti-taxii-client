@@ -74,7 +74,7 @@ You can follow references to ``ApiRoot`` objects,
    api_root = server.api_roots[0]
    collection = api_root.collections[0]
    collection.add_objects(stix_bundle)
-   
+
 Additionally, you can access ``ApiRoot`` objects directly through the URL (which can be especially
 helpful when running a server and client on localhost):
 
