@@ -75,6 +75,13 @@ You can follow references to ``ApiRoot`` objects,
    collection = api_root.collections[0]
    collection.add_objects(stix_bundle)
 
+Additionally, you can access ``ApiRoot`` objects directly through the URL (which can be especially
+helpful when running a server and client on localhost):
+
+.. code:: python
+
+   server = Server('https://example.com/<ApiRoot Name>/', user='user_id', password='user_password')
+
 Each ``ApiRoot`` has attributes corresponding to its meta data
 
 - ``title``
