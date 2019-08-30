@@ -28,6 +28,7 @@ API Reference
    :maxdepth: 3
 
    api/api_reference
+   contributing
 
 
 Indices and tables
