@@ -32,10 +32,10 @@ DISCOVERY_RESPONSE = """{
   "title": "Some TAXII Server",
   "description": "This TAXII Server contains a listing of...",
   "contact": "string containing contact information",
-  "default": "https://example.com/api2/",
+  "default": "/api2/",
   "api_roots": [
     "https://example.com/api1/",
-    "https://example.com/api2/",
+    "/api2/",
     "https://example.net/trustgroup1/"
   ]
 }"""
@@ -54,7 +54,7 @@ COLLECTIONS_RESPONSE = """{
       "can_read": true,
       "can_write": false,
       "media_types": [
-        "application/vnd.oasis.stix+json; version=2.0"
+        "application/vnd.oasis.stix+json; version=2.1"
       ]
     },
     {
@@ -64,7 +64,7 @@ COLLECTIONS_RESPONSE = """{
       "can_read": true,
       "can_write": false,
       "media_types": [
-        "application/vnd.oasis.stix+json; version=2.0"
+        "application/vnd.oasis.stix+json; version=2.1"
       ]
     }
   ]
@@ -76,7 +76,7 @@ COLLECTION_RESPONSE = """{
   "can_read": true,
   "can_write": false,
   "media_types": [
-    "application/vnd.oasis.stix+json; version=2.0"
+    "application/vnd.oasis.stix+json; version=2.1"
   ]
 }"""
 
@@ -88,7 +88,7 @@ WRITABLE_COLLECTION = """{
   "can_read": false,
   "can_write": true,
   "media_types": [
-    "application/vnd.oasis.stix+json; version=2.0"
+    "application/vnd.oasis.stix+json; version=2.1"
   ]
 }"""
 
@@ -152,13 +152,13 @@ GET_MANIFEST_RESPONSE = """{
       "id": "indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b",
       "date_added": "2016-11-01T03:04:05Z",
       "versions": ["2016-11-03T12:30:59.000Z","2016-12-03T12:30:59.000Z"],
-      "media_types": ["application/vnd.oasis.stix+json; version=2.0"]
+      "media_types": ["application/vnd.oasis.stix+json; version=2.1"]
     },
     {
       "id": "indicator--ef0b28e1-308c-4a30-8770-9b4851b260a5",
       "date_added": "2016-11-01T10:29:05Z",
       "versions": ["2016-11-03T12:30:59.000Z"],
-      "media_types": ["application/vnd.oasis.stix+json; version=2.0"]
+      "media_types": ["application/vnd.oasis.stix+json; version=2.1"]
     }
   ]
 }"""
@@ -224,7 +224,7 @@ def collection_dict():
         "can_read": False,
         "can_write": True,
         "media_types": [
-            "application/vnd.oasis.stix+json; version=2.0"
+            "application/vnd.oasis.stix+json; version=2.1"
         ]
     }
 
@@ -367,6 +367,42 @@ def test_discovery_with_no_title(server):
         server.refresh()
 
     assert "No 'title' in Server Discovery for request 'https://example.com/taxii/'" == str(excinfo.value)
+
+@responses.activate
+def test_discovery_with_relative_apiroot(server):
+    response = """{
+      "title": "Some TAXII Server",
+      "default": "/api2/",
+      "api_roots": [
+          "/api2/"
+      ]
+    }"""
+
+    set_discovery_response(response)
+
+    assert server.api_roots[0].url == "https://example.com/api2/"
+    assert server.default.url == "https://example.com/api2/"
+
+
+@responses.activate
+def test_discovery_different_host(server):
+    """
+    Try with an ApiRoot absolute URL to a different host.  Make sure ApiRoot
+    URL absolutizing (or anything else) doesn't interfere.
+    """
+    response = """{
+      "title": "Some TAXII Server",
+      "default": "http://completely.different.com/api3.1415/",
+      "api_roots": [
+          "http://completely.different.com/api3.1415/"
+      ]
+    }"""
+
+    set_discovery_response(response)
+
+    assert server.api_roots[0].url == \
+           "http://completely.different.com/api3.1415/"
+    assert server.default.url == "http://completely.different.com/api3.1415/"
 
 
 @responses.activate
@@ -641,7 +677,7 @@ def test_content_type_invalid(collection):
     with pytest.raises(TAXIIServiceException) as excinfo:
         collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     assert ("Unexpected Response. Got Content-Type: 'taxii' for "
-            "Accept: 'application/vnd.oasis.stix+json; version=2.0'") in str(excinfo.value)
+            "Accept: 'application/vnd.oasis.stix+json; version=2.1'") in str(excinfo.value)
 
 
 def test_url_filter_type():
@@ -684,10 +720,34 @@ def test_filter_added_after():
         _filter_kwargs_to_query_params({"added_after": (dt, "bar")})
 
 
+def test_filter_limit():
+    params = _filter_kwargs_to_query_params({"limit": "5"})
+    assert params == {"limit": "5"}
+
+    params = _filter_kwargs_to_query_params({"limit": 5})
+    assert params == {"limit": "5"}
+
+    params = _filter_kwargs_to_query_params({"limit": "2"})
+    assert params == {"limit": "2"}
+
+    with pytest.raises(InvalidArgumentsError):
+        _filter_kwargs_to_query_params({"limit": "hello"})
+
+    with pytest.raises(InvalidArgumentsError):
+        _filter_kwargs_to_query_params({"limit": -6})
+
+    with pytest.raises(InvalidArgumentsError):
+        _filter_kwargs_to_query_params({"limit": "-6"})
+
+    with pytest.raises(InvalidArgumentsError):
+        _filter_kwargs_to_query_params({"limit": ("6", 3)})
+
+
 def test_filter_combo():
     dt = datetime.datetime(2010, 9, 8, 7, 6, 5)
     params = _filter_kwargs_to_query_params({
         "added_after": dt,
+        "limit": 10,
         "type": ("indicator", "malware"),
         "version": dt,
         "foo": ("bar", "baz")
@@ -695,6 +755,7 @@ def test_filter_combo():
 
     assert params == {
         "added_after": "2010-09-08T07:06:05Z",
+        "limit": "10",
         "match[type]": "indicator,malware",
         "match[version]": "2010-09-08T07:06:05Z",
         "match[foo]": "bar,baz"
@@ -741,7 +802,7 @@ def test_invalid_content_type_for_connection():
                  headers={"Accept": MEDIA_TYPE_TAXII_V21 + "; charset=utf-8"})
 
     assert ("Unexpected Response. Got Content-Type: 'application/vnd.oasis.taxii+json; "
-            "version=2.0' for Accept: 'application/vnd.oasis.taxii+json; version=2.0; "
+            "version=2.1' for Accept: 'application/vnd.oasis.taxii+json; version=2.1; "
             "charset=utf-8'") == str(excinfo.value)
 
 
