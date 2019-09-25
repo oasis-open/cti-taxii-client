@@ -120,7 +120,10 @@ ADD_OBJECTS_RESPONSE = """{
   "total_count": 1,
   "success_count": 1,
   "successes": [
-    "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
+    {
+      "id": "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
+      "version": "2016-04-06T20:03:48.000Z"
+    }
   ],
   "failure_count": 0,
   "pending_count": 0
@@ -135,7 +138,10 @@ ADD_OBJECTS_RESPONSE_FROM_SPEC = """{
   "total_count": 4,
   "success_count": 1,
   "successes": [
-    "indicator--c410e480-e42b-47d1-9476-85307c12bcbf"
+    {
+      "id": "indicator--c410e480-e42b-47d1-9476-85307c12bcbf",
+      "version": "2015-11-09T16:13:21.000Z"
+    }
   ],
   "failure_count": 0,
   "pending_count": 3
@@ -166,7 +172,10 @@ STATUS_RESPONSE = """{
   "total_count": 4,
   "success_count": 1,
   "successes": [
-    "indicator--c410e480-e42b-47d1-9476-85307c12bcbf"
+    {
+      "id": "indicator--c410e480-e42b-47d1-9476-85307c12bcbf",
+      "version": "2015-11-09T16:13:21.000Z"
+    }
   ],
   "failure_count": 1,
   "failures": [
@@ -177,8 +186,14 @@ STATUS_RESPONSE = """{
   ],
   "pending_count": 2,
   "pendings": [
-    "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
-    "relationship--045585ad-a22f-4333-af33-bfd503a683b5"
+    {
+      "id": "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
+      "version": "2016-04-06T20:03:48.000Z"
+    },
+    {
+      "id": "relationship--045585ad-a22f-4333-af33-bfd503a683b5",
+      "version": "2016-03-12T13:19:35.000Z"
+    }
   ]
 }"""
 
@@ -187,42 +202,12 @@ BAD_DISCOVERY_RESPONSE = """{"title":"""
 
 @pytest.fixture
 def status_dict():
-    return {
-        "id": "2d086da7-4bdc-4f91-900e-d77486753710",
-        "status": "pending",
-        "request_timestamp": "2016-11-02T12:34:34.12345Z",
-        "total_count": 4,
-        "success_count": 1,
-        "successes": [
-            "indicator--c410e480-e42b-47d1-9476-85307c12bcbf"
-        ],
-        "failure_count": 1,
-        "failures": [
-            {
-              "id": "malware--664fa29d-bf65-4f28-a667-bdb76f29ec98",
-              "message": "Unable to process object"
-            }
-        ],
-        "pending_count": 2,
-        "pendings": [
-            "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
-            "relationship--045585ad-a22f-4333-af33-bfd503a683b5"
-        ]
-    }
+    return json.loads(STATUS_RESPONSE)
 
 
 @pytest.fixture
 def collection_dict():
-    return {
-        "id": "e278b87e-0f9b-4c63-a34c-c8f0b3e91acb",
-        "title": "Writable Collection",
-        "description": "This collection is a dropbox for submitting indicators",
-        "can_read": False,
-        "can_write": True,
-        "media_types": [
-            "application/vnd.oasis.stix+json; version=2.1"
-        ]
-    }
+    return json.loads(WRITABLE_COLLECTION)
 
 
 @pytest.fixture
