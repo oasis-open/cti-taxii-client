@@ -490,14 +490,14 @@ class Collection(_TAXIIEndpoint):
         self._populate_fields(**response)
         self._loaded = True
 
-    def get_objects(self, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+    def get_objects(self, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(self.objects_url, headers={"Accept": accept},
                               params=query_params)
 
-    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V21):
+    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/"
@@ -507,7 +507,7 @@ class Collection(_TAXIIEndpoint):
         return self._conn.get(url, headers={"Accept": accept},
                               params=query_params)
 
-    def delete_object(self, obj_id, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+    def delete_object(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Delete an Object`` endpoint (section 5.7)"""
         self._verify_can_write()
         url = self.objects_url + str(obj_id) + "/"
@@ -515,7 +515,7 @@ class Collection(_TAXIIEndpoint):
         return self._conn.delete(url, headers={"Accept": accept},
                                  params=query_params)
 
-    def object_versions(self, obj_id, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+    def object_versions(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get Object Versions`` endpoint (section 5.8)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/versions/"
@@ -525,7 +525,7 @@ class Collection(_TAXIIEndpoint):
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
                     timeout=60, accept=MEDIA_TYPE_TAXII_V21,
-                    content_type=MEDIA_TYPE_STIX_V21):
+                    content_type=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Add Objects`` endpoint (section 5.4)
 
         Add objects to the collection.  This may be performed either

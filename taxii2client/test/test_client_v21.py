@@ -3,7 +3,6 @@ import json
 
 import pytest
 import responses
-import six
 
 from taxii2client.v21 import (
     DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V21, MEDIA_TYPE_TAXII_V21, AccessError,
@@ -92,12 +91,9 @@ WRITABLE_COLLECTION = """{
   ]
 }"""
 
-# This bundle is used as the response to get_objects(), and also the bundle
+# This envelope is used as the response to get_objects(), and also the envelope
 # POST'ed with add_objects().
-STIX_BUNDLE = """{
-  "type": "bundle",
-  "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
-  "spec_version": "2.0",
+TAXII_ENVELOPE = """{
   "objects": [
     {
       "type": "indicator",
@@ -109,12 +105,12 @@ STIX_BUNDLE = """{
     }
   ]
 }"""
-GET_OBJECTS_RESPONSE = STIX_BUNDLE
-# get_object() still returns a bundle. In this case, the bundle has only one
-# object (the correct one.)
+GET_OBJECTS_RESPONSE = TAXII_ENVELOPE
+# get_object() still returns an envelope. In this case, the envelope has only
+# one object (the correct one.)
 GET_OBJECT_RESPONSE = GET_OBJECTS_RESPONSE
 
-# This is the expected response when calling ADD_OBJECTS with the STIX_BUNDLE
+# This is the expected response when calling ADD_OBJECTS with the TAXII_ENVELOPE
 # above. There is only one object, and it was added successfully. This response
 # is not in the spec.
 ADD_OBJECTS_RESPONSE = """{
@@ -509,18 +505,17 @@ def test_collection_unexpected_kwarg():
 @responses.activate
 def test_get_collection_objects(collection):
     responses.add(responses.GET, GET_OBJECTS_URL, GET_OBJECTS_RESPONSE,
-                  status=200, content_type=MEDIA_TYPE_STIX_V21)
+                  status=200, content_type=MEDIA_TYPE_TAXII_V21)
 
     response = collection.get_objects()
 
-    assert response["spec_version"] == "2.0"
     assert len(response["objects"]) == 1
 
 
 @responses.activate
 def test_get_object(collection):
     responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
-                  status=200, content_type=MEDIA_TYPE_STIX_V21)
+                  status=200, content_type=MEDIA_TYPE_TAXII_V21)
 
     response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     indicator = response["objects"][0]
@@ -530,7 +525,7 @@ def test_get_object(collection):
 @responses.activate
 def test_cannot_write_to_readonly_collection(collection):
     with pytest.raises(AccessError):
-        collection.add_objects(STIX_BUNDLE)
+        collection.add_objects(TAXII_ENVELOPE)
 
 
 @responses.activate
@@ -539,7 +534,7 @@ def test_add_object_to_collection(writable_collection):
                   ADD_OBJECTS_RESPONSE, status=202,
                   content_type=MEDIA_TYPE_TAXII_V21)
 
-    status = writable_collection.add_objects(STIX_BUNDLE)
+    status = writable_collection.add_objects(TAXII_ENVELOPE)
 
     assert status.status == "complete"
     assert status.total_count == 1
@@ -557,9 +552,9 @@ def test_add_object_to_collection_dict(writable_collection):
     responses.add(responses.POST, ADD_WRITABLE_OBJECTS_URL, ADD_OBJECTS_RESPONSE,
                   status=202, content_type=MEDIA_TYPE_TAXII_V21)
 
-    dict_bundle = json.load(six.StringIO(STIX_BUNDLE))
+    dict_envelope = json.loads(TAXII_ENVELOPE)
 
-    status = writable_collection.add_objects(dict_bundle)
+    status = writable_collection.add_objects(dict_envelope)
 
     assert status.status == "complete"
     assert status.total_count == 1
@@ -575,9 +570,9 @@ def test_add_object_to_collection_bin(writable_collection):
                   ADD_OBJECTS_RESPONSE, status=202,
                   content_type=MEDIA_TYPE_TAXII_V21)
 
-    bin_bundle = STIX_BUNDLE.encode("utf-8")
+    bin_envelope = TAXII_ENVELOPE.encode("utf-8")
 
-    status = writable_collection.add_objects(bin_bundle)
+    status = writable_collection.add_objects(bin_envelope)
 
     assert status.status == "complete"
     assert status.total_count == 1
@@ -598,13 +593,11 @@ def test_add_object_to_collection_badtype(writable_collection):
 
 
 @responses.activate
-def test_add_object_rases_error_when_collection_id_does_not_match_url(
+def test_error_when_collection_id_does_not_match_url(
         bad_writable_collection):
-    responses.add(responses.POST, ADD_OBJECTS_URL, ADD_OBJECTS_RESPONSE,
-                  status=202, content_type=MEDIA_TYPE_TAXII_V21)
 
     with pytest.raises(ValidationError) as excinfo:
-        bad_writable_collection.add_objects(STIX_BUNDLE)
+        bad_writable_collection.refresh()
 
     msg = ("The collection 'e278b87e-0f9b-4c63-a34c-c8f0b3e91acb' does not "
            "match the url for queries "
@@ -662,7 +655,7 @@ def test_status_raw(status_dict):
 @responses.activate
 def test_content_type_valid(collection):
     responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
-                  status=200, content_type="%s; charset=utf-8" % MEDIA_TYPE_STIX_V21)
+                  status=200, content_type="%s; charset=utf-8" % MEDIA_TYPE_TAXII_V21)
 
     response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     indicator = response["objects"][0]
@@ -677,7 +670,7 @@ def test_content_type_invalid(collection):
     with pytest.raises(TAXIIServiceException) as excinfo:
         collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     assert ("Unexpected Response. Got Content-Type: 'taxii' for "
-            "Accept: 'application/vnd.oasis.stix+json; version=2.1'") in str(excinfo.value)
+            "Accept: 'application/vnd.oasis.taxii+json; version=2.1'") in str(excinfo.value)
 
 
 def test_url_filter_type():
@@ -1028,7 +1021,7 @@ def test_collection_missing_trailing_slash():
     set_collection_response()
     collection = Collection(COLLECTION_URL[:-1])
     responses.add(responses.GET, GET_OBJECT_URL, GET_OBJECT_RESPONSE,
-                  status=200, content_type="%s; charset=utf-8" % MEDIA_TYPE_STIX_V21)
+                  status=200, content_type="%s; charset=utf-8" % MEDIA_TYPE_TAXII_V21)
 
     response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     indicator = response["objects"][0]
