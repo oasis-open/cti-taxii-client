@@ -523,7 +523,7 @@ class Collection(_TAXIIEndpoint):
         return self._conn.get(url, headers={"Accept": accept},
                               params=query_params)
 
-    def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
+    def add_objects(self, envelope, wait_for_completion=True, poll_interval=1,
                     timeout=60, accept=MEDIA_TYPE_TAXII_V21,
                     content_type=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Add Objects`` endpoint (section 5.4)
@@ -539,7 +539,8 @@ class Collection(_TAXIIEndpoint):
         expires, or the operation completes.
 
         Args:
-            bundle: A STIX bundle with the objects to add (string, dict, binary)
+            envelope: A TAXII envelope with the objects to add (string, dict,
+                binary)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
             poll_interval (int): If waiting for completion, how often to poll
@@ -568,19 +569,19 @@ class Collection(_TAXIIEndpoint):
             "Content-Type": content_type,
         }
 
-        if isinstance(bundle, dict):
-            json_text = json.dumps(bundle, ensure_ascii=False)
+        if isinstance(envelope, dict):
+            json_text = json.dumps(envelope, ensure_ascii=False)
             data = json_text.encode("utf-8")
 
-        elif isinstance(bundle, six.text_type):
-            data = bundle.encode("utf-8")
+        elif isinstance(envelope, six.text_type):
+            data = envelope.encode("utf-8")
 
-        elif isinstance(bundle, six.binary_type):
-            data = bundle
+        elif isinstance(envelope, six.binary_type):
+            data = envelope
 
         else:
             raise TypeError("Don't know how to handle type '{}'".format(
-                type(bundle).__name__))
+                type(envelope).__name__))
 
         status_json = self._conn.post(self.objects_url, headers=headers,
                                       data=data)
