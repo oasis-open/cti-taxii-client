@@ -349,6 +349,7 @@ def test_discovery_with_no_title(server):
 
     assert "No 'title' in Server Discovery for request 'https://example.com/taxii/'" == str(excinfo.value)
 
+
 @responses.activate
 def test_discovery_with_relative_apiroot(server):
     response = """{
@@ -382,7 +383,7 @@ def test_discovery_different_host(server):
     set_discovery_response(response)
 
     assert server.api_roots[0].url == \
-           "http://completely.different.com/api3.1415/"
+        "http://completely.different.com/api3.1415/"
     assert server.default.url == "http://completely.different.com/api3.1415/"
 
 
