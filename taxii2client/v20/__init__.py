@@ -12,9 +12,10 @@ import requests.structures  # is this public API?
 import six
 import six.moves.urllib.parse as urlparse
 
-from ..exceptions import (AccessError, InvalidArgumentsError,
-                          InvalidJSONError, TAXIIServiceException,
-                          ValidationError)
+from ..exceptions import (
+    AccessError, InvalidArgumentsError, InvalidJSONError,
+    TAXIIServiceException, ValidationError
+)
 from ..version import __version__
 
 MEDIA_TYPE_STIX_V20 = "application/vnd.oasis.stix+json; version=2.0"

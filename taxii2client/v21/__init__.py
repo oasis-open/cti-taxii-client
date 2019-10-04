@@ -12,9 +12,10 @@ import requests.structures  # is this public API?
 import six
 import six.moves.urllib.parse as urlparse
 
-from ..exceptions import (AccessError, InvalidArgumentsError,
-                          InvalidJSONError, TAXIIServiceException,
-                          ValidationError)
+from ..exceptions import (
+    AccessError, InvalidArgumentsError, InvalidJSONError,
+    TAXIIServiceException, ValidationError
+)
 from ..version import __version__
 
 MEDIA_TYPE_STIX_V21 = "application/vnd.oasis.stix+json; version=2.1"
@@ -62,15 +63,16 @@ def _ensure_datetime_to_string(maybe_dttm):
 def _filter_kwargs_to_query_params(filter_kwargs):
     """
     Convert API keyword args to a mapping of URL query parameters.  Except for
-    "added_after", all keywords are mapped to match filters, i.e. to a query
-    parameter of the form "match[<kwarg>]".  "added_after" is left alone, since
-    it's a special filter, as defined in the spec.
+    "added_after" and "limit", all keywords are mapped to match filters, i.e.
+    to a query parameter of the form "match[<kwarg>]".  "added_after" and
+    "limit" are left alone, since they're special filters, as defined in the
+    spec.
 
     Each value can be a single value or iterable of values.  "version" and
     "added_after" get special treatment, since they are timestamp-valued:
     datetime.datetime instances are supported and automatically converted to
-    STIX-compliant strings.  Other than that, all values must be strings.  None
-    values, empty lists, etc are silently ignored.
+    STIX-compliant strings.  "limit" may be an int.  Other than that, all
+    values must be strings.  None values, empty lists, etc are silently ignored.
 
     Args:
         filter_kwargs: The filter information, as a mapping.
@@ -104,6 +106,22 @@ def _filter_kwargs_to_query_params(filter_kwargs):
             query_params["added_after"] = ",".join(
                 _ensure_datetime_to_string(val) for val in arglist
             )
+
+        elif kwarg == "limit":
+            if len(arglist) > 1:
+                raise InvalidArgumentsError("No more than one value for filter"
+                                            " 'limit' may be given")
+
+            try:
+                if any(int(lim) < 1 for lim in arglist):
+                    raise InvalidArgumentsError(
+                        "Limits must be positive integers"
+                    )
+            except ValueError:
+                # Conversion to int failed.
+                raise InvalidArgumentsError("Limits must be positive integers")
+
+            query_params["limit"] = ",".join(str(lim) for lim in arglist)
 
         else:
             query_params["match[" + kwarg + "]"] = ",".join(arglist)
@@ -473,14 +491,14 @@ class Collection(_TAXIIEndpoint):
         self._populate_fields(**response)
         self._loaded = True
 
-    def get_objects(self, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+    def get_objects(self, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(self.objects_url, headers={"Accept": accept},
                               params=query_params)
 
-    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V21):
+    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/"
@@ -490,7 +508,7 @@ class Collection(_TAXIIEndpoint):
         return self._conn.get(url, headers={"Accept": accept},
                               params=query_params)
 
-    def delete_object(self, obj_id, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+    def delete_object(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Delete an Object`` endpoint (section 5.7)"""
         self._verify_can_write()
         url = self.objects_url + str(obj_id) + "/"
@@ -498,7 +516,7 @@ class Collection(_TAXIIEndpoint):
         return self._conn.delete(url, headers={"Accept": accept},
                                  params=query_params)
 
-    def object_versions(self, obj_id, accept=MEDIA_TYPE_STIX_V21, **filter_kwargs):
+    def object_versions(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get Object Versions`` endpoint (section 5.8)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/versions/"
@@ -506,9 +524,9 @@ class Collection(_TAXIIEndpoint):
         return self._conn.get(url, headers={"Accept": accept},
                               params=query_params)
 
-    def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
+    def add_objects(self, envelope, wait_for_completion=True, poll_interval=1,
                     timeout=60, accept=MEDIA_TYPE_TAXII_V21,
-                    content_type=MEDIA_TYPE_STIX_V21):
+                    content_type=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Add Objects`` endpoint (section 5.4)
 
         Add objects to the collection.  This may be performed either
@@ -522,7 +540,8 @@ class Collection(_TAXIIEndpoint):
         expires, or the operation completes.
 
         Args:
-            bundle: A STIX bundle with the objects to add (string, dict, binary)
+            envelope: A TAXII envelope with the objects to add (string, dict,
+                binary)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
             poll_interval (int): If waiting for completion, how often to poll
@@ -551,19 +570,19 @@ class Collection(_TAXIIEndpoint):
             "Content-Type": content_type,
         }
 
-        if isinstance(bundle, dict):
-            json_text = json.dumps(bundle, ensure_ascii=False)
+        if isinstance(envelope, dict):
+            json_text = json.dumps(envelope, ensure_ascii=False)
             data = json_text.encode("utf-8")
 
-        elif isinstance(bundle, six.text_type):
-            data = bundle.encode("utf-8")
+        elif isinstance(envelope, six.text_type):
+            data = envelope.encode("utf-8")
 
-        elif isinstance(bundle, six.binary_type):
-            data = bundle
+        elif isinstance(envelope, six.binary_type):
+            data = envelope
 
         else:
             raise TypeError("Don't know how to handle type '{}'".format(
-                type(bundle).__name__))
+                type(envelope).__name__))
 
         status_json = self._conn.post(self.objects_url, headers=headers,
                                       data=data)
@@ -829,14 +848,14 @@ class Server(_TAXIIEndpoint):
         self._description = description  # optional
         self._contact = contact  # optional
         roots = api_roots or []  # optional
-        self._api_roots = [ApiRoot(url,
+        self._api_roots = [ApiRoot(urlparse.urljoin(self.url, url),
                                    user=self._user,
                                    password=self._password,
                                    verify=self._verify,
                                    proxies=self._proxies)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
-        # rather than creating a duplicate. The TAXII 2.0 spec says that the
+        # rather than creating a duplicate. The TAXII 2.1 spec says that the
         # `default` API Root MUST be an item in `api_roots`.
         root_dict = dict(zip(roots, self._api_roots))
         self._default = root_dict.get(default)  # optional
