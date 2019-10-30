@@ -53,7 +53,7 @@ COLLECTIONS_RESPONSE = """{
       "can_read": true,
       "can_write": false,
       "media_types": [
-        "application/vnd.oasis.stix+json; version=2.1"
+        "application/stix+json;version=2.1"
       ]
     },
     {
@@ -63,7 +63,7 @@ COLLECTIONS_RESPONSE = """{
       "can_read": true,
       "can_write": false,
       "media_types": [
-        "application/vnd.oasis.stix+json; version=2.1"
+        "application/stix+json;version=2.1"
       ]
     }
   ]
@@ -75,7 +75,7 @@ COLLECTION_RESPONSE = """{
   "can_read": true,
   "can_write": false,
   "media_types": [
-    "application/vnd.oasis.stix+json; version=2.1"
+    "application/stix+json;version=2.1"
   ]
 }"""
 
@@ -87,7 +87,7 @@ WRITABLE_COLLECTION = """{
   "can_read": false,
   "can_write": true,
   "media_types": [
-    "application/vnd.oasis.stix+json; version=2.1"
+    "application/stix+json;version=2.1"
   ]
 }"""
 
@@ -154,13 +154,13 @@ GET_MANIFEST_RESPONSE = """{
       "id": "indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b",
       "date_added": "2016-11-01T03:04:05Z",
       "versions": ["2016-11-03T12:30:59.000Z","2016-12-03T12:30:59.000Z"],
-      "media_types": ["application/vnd.oasis.stix+json; version=2.1"]
+      "media_types": ["application/stix+json;version=2.1"]
     },
     {
       "id": "indicator--ef0b28e1-308c-4a30-8770-9b4851b260a5",
       "date_added": "2016-11-01T10:29:05Z",
       "versions": ["2016-11-03T12:30:59.000Z"],
-      "media_types": ["application/vnd.oasis.stix+json; version=2.1"]
+      "media_types": ["application/stix+json;version=2.1"]
     }
   ]
 }"""
@@ -656,7 +656,7 @@ def test_content_type_invalid(collection):
     with pytest.raises(TAXIIServiceException) as excinfo:
         collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     assert ("Unexpected Response. Got Content-Type: 'taxii' for "
-            "Accept: 'application/vnd.oasis.taxii+json; version=2.1'") in str(excinfo.value)
+            "Accept: 'application/taxii+json;version=2.1'") in str(excinfo.value)
 
 
 def test_url_filter_type():
@@ -778,11 +778,10 @@ def test_invalid_content_type_for_connection():
     with pytest.raises(TAXIIServiceException) as excinfo:
         conn = _HTTPConnection(user="foo", password="bar", verify=False)
         conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
-                 headers={"Accept": MEDIA_TYPE_TAXII_V21 + "; charset=utf-8"})
+                 headers={"Accept": MEDIA_TYPE_TAXII_V21 + ";charset=utf-8"})
 
-    assert ("Unexpected Response. Got Content-Type: 'application/vnd.oasis.taxii+json; "
-            "version=2.1' for Accept: 'application/vnd.oasis.taxii+json; version=2.1; "
-            "charset=utf-8'") == str(excinfo.value)
+    assert ("Unexpected Response. Got Content-Type: 'application/taxii+json;version=2.1'"
+            " for Accept: 'application/taxii+json;version=2.1;charset=utf-8'") == str(excinfo.value)
 
 
 def test_status_missing_id_property(status_dict):

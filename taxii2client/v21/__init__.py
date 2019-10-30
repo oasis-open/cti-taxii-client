@@ -18,8 +18,8 @@ from ..exceptions import (
 )
 from ..version import __version__
 
-MEDIA_TYPE_STIX_V21 = "application/vnd.oasis.stix+json; version=2.1"
-MEDIA_TYPE_TAXII_V21 = "application/vnd.oasis.taxii+json; version=2.1"
+MEDIA_TYPE_STIX_V21 = "application/stix+json;version=2.1"
+MEDIA_TYPE_TAXII_V21 = "application/taxii+json;version=2.1"
 DEFAULT_USER_AGENT = "taxii2-client/" + __version__
 
 
@@ -229,8 +229,7 @@ class Status(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V21):
         """Updates Status information"""
-        response = self.__raw = self._conn.get(self.url,
-                                               headers={"Accept": accept})
+        response = self.__raw = self._conn.get(self.url, headers={"Accept": accept})
         self._populate_fields(**response)
 
     def wait_until_final(self, poll_interval=1, timeout=60):
@@ -486,8 +485,7 @@ class Collection(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V21):
         """Update Collection information"""
-        response = self.__raw = self._conn.get(self.url,
-                                               headers={"Accept": accept})
+        response = self.__raw = self._conn.get(self.url, headers={"Accept": accept})
         self._populate_fields(**response)
         self._loaded = True
 
@@ -495,8 +493,7 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.objects_url, headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(self.objects_url, headers={"Accept": accept}, params=query_params)
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
@@ -505,24 +502,21 @@ class Collection(_TAXIIEndpoint):
         query_params = None
         if version:
             query_params = _filter_kwargs_to_query_params({"version": version})
-        return self._conn.get(url, headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(url, headers={"Accept": accept}, params=query_params)
 
     def delete_object(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Delete an Object`` endpoint (section 5.7)"""
         self._verify_can_write()
         url = self.objects_url + str(obj_id) + "/"
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.delete(url, headers={"Accept": accept},
-                                 params=query_params)
+        return self._conn.delete(url, headers={"Accept": accept}, params=query_params)
 
     def object_versions(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get Object Versions`` endpoint (section 5.8)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/versions/"
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(url, headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(url, headers={"Accept": accept}, params=query_params)
 
     def add_objects(self, envelope, wait_for_completion=True, poll_interval=1,
                     timeout=60, accept=MEDIA_TYPE_TAXII_V21,
@@ -584,16 +578,14 @@ class Collection(_TAXIIEndpoint):
             raise TypeError("Don't know how to handle type '{}'".format(
                 type(envelope).__name__))
 
-        status_json = self._conn.post(self.objects_url, headers=headers,
-                                      data=data)
+        status_json = self._conn.post(self.objects_url, headers=headers, data=data)
 
         status_url = urlparse.urljoin(
             self.url,
             "../../status/{}".format(status_json["id"])
         )
 
-        status = Status(url=status_url, conn=self._conn,
-                        status_info=status_json)
+        status = Status(url=status_url, conn=self._conn, status_info=status_json)
 
         if not wait_for_completion or status.status == "complete":
             return status
@@ -606,9 +598,7 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.url + "manifest/",
-                              headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(self.url + "manifest/", headers={"Accept": accept}, params=query_params)
 
 
 class ApiRoot(_TAXIIEndpoint):
@@ -848,12 +838,14 @@ class Server(_TAXIIEndpoint):
         self._description = description  # optional
         self._contact = contact  # optional
         roots = api_roots or []  # optional
-        self._api_roots = [ApiRoot(urlparse.urljoin(self.url, url),
-                                   user=self._user,
-                                   password=self._password,
-                                   verify=self._verify,
-                                   proxies=self._proxies)
-                           for url in roots]
+        self._api_roots = [
+            ApiRoot(urlparse.urljoin(self.url, url),
+                    user=self._user,
+                    password=self._password,
+                    verify=self._verify,
+                    proxies=self._proxies)
+            for url in roots
+        ]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.1 spec says that the
         # `default` API Root MUST be an item in `api_roots`.
@@ -924,8 +916,7 @@ class _HTTPConnection(object):
 
         return (
             all(elem in content_type_tokens for elem in accept_tokens) and
-            (content_type_tokens[0] == 'application/vnd.oasis.taxii+json' or
-             content_type_tokens[0] == 'application/vnd.oasis.stix+json')
+            content_type_tokens[0] == 'application/taxii+json'
         )
 
     def get(self, url, headers=None, params=None):
