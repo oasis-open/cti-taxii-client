@@ -502,9 +502,10 @@ class Collection(_TAXIIEndpoint):
         """
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
+        headers = {"Accept": accept}
         if range_query:
             headers["Range"] = "items {}".format(range_query)
-        return self._conn.get(self.objects_url, headers={"Accept": accept},
+        return self._conn.get(self.objects_url, headers=headers,
                               params=query_params)
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
