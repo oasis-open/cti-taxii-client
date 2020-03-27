@@ -8,13 +8,15 @@ import time
 
 import pytz
 import requests
+import requests.auth
 import requests.structures  # is this public API?
 import six
 import six.moves.urllib.parse as urlparse
 
-from ..exceptions import (AccessError, InvalidArgumentsError,
-                          InvalidJSONError, TAXIIServiceException,
-                          ValidationError)
+from ..exceptions import (
+    AccessError, InvalidArgumentsError, InvalidJSONError,
+    TAXIIServiceException, ValidationError
+)
 from ..version import __version__
 
 MEDIA_TYPE_STIX_V21 = "application/vnd.oasis.stix+json; version=2.1"
