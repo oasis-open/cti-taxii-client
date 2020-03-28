@@ -6,9 +6,12 @@ import responses
 import six
 
 from taxii2client import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V21
-from taxii2client.common import _HTTPConnection, _TAXIIEndpoint, _filter_kwargs_to_query_params
+from taxii2client.common import (
+    _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
+)
 from taxii2client.exceptions import (
-    AccessError, InvalidArgumentsError, InvalidJSONError, TAXIIServiceException, ValidationError
+    AccessError, InvalidArgumentsError, InvalidJSONError,
+    TAXIIServiceException, ValidationError
 )
 from taxii2client.v21 import ApiRoot, Collection, Server, Status
 
@@ -213,7 +216,7 @@ def status_dict():
         "success_count": 1,
         "successes": [
             {
-                "id": "indicator--c410e480-e42b-47d1-9476-85307c12bcbf" ,
+                "id": "indicator--c410e480-e42b-47d1-9476-85307c12bcbf",
                 "version": "2018-05-27T12:02:41.312Z"
             }
         ],

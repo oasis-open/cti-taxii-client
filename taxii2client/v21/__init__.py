@@ -9,7 +9,7 @@ import six
 import six.moves.urllib.parse as urlparse
 
 from .. import MEDIA_TYPE_TAXII_V21
-from ..common import _TAXIIEndpoint, _filter_kwargs_to_query_params
+from ..common import _filter_kwargs_to_query_params, _TAXIIEndpoint
 from ..exceptions import AccessError, ValidationError
 
 
@@ -241,6 +241,11 @@ class Collection(_TAXIIEndpoint):
         return self._description
 
     @property
+    def alias(self):
+        self._ensure_loaded()
+        return self._alias
+
+    @property
     def can_read(self):
         self._ensure_loaded()
         return self._can_read
@@ -270,12 +275,13 @@ class Collection(_TAXIIEndpoint):
         self._ensure_loaded()
         return self.__raw
 
-    def _populate_fields(self, id=None, title=None, description=None,
+    def _populate_fields(self, id=None, title=None, description=None, alias=None,
                          can_read=None, can_write=None, media_types=None,
                          **kwargs):
         self._id = id  # required
         self._title = title  # required
         self._description = description  # optional
+        self._alias = alias  # optional
         self._can_read = can_read  # required
         self._can_write = can_write  # required
         self._media_types = media_types or []  # optional

@@ -9,7 +9,7 @@ import six
 import six.moves.urllib.parse as urlparse
 
 from .. import MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
-from ..common import _TAXIIEndpoint, _filter_kwargs_to_query_params
+from ..common import _filter_kwargs_to_query_params, _TAXIIEndpoint
 from ..exceptions import AccessError, ValidationError
 
 

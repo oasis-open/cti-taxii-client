@@ -8,8 +8,7 @@ import six
 
 from . import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V20, MEDIA_TYPE_TAXII_V21
 from .exceptions import (
-    AccessError, InvalidArgumentsError, InvalidJSONError,
-    TAXIIServiceException, ValidationError
+    InvalidArgumentsError, InvalidJSONError, TAXIIServiceException
 )
 
 

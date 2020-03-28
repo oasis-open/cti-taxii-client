@@ -5,10 +5,15 @@ import pytest
 import responses
 import six
 
-from taxii2client import DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
-from taxii2client.common import _HTTPConnection, _TAXIIEndpoint, _filter_kwargs_to_query_params
+from taxii2client import (
+    DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
+)
+from taxii2client.common import (
+    _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
+)
 from taxii2client.exceptions import (
-    AccessError, InvalidArgumentsError, InvalidJSONError, TAXIIServiceException, ValidationError
+    AccessError, InvalidArgumentsError, InvalidJSONError,
+    TAXIIServiceException, ValidationError
 )
 from taxii2client.v20 import ApiRoot, Collection, Server, Status
 
