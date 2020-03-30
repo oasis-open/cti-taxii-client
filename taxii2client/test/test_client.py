@@ -6,11 +6,16 @@ import responses
 import six
 
 from taxii2client import (
-    DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20, AccessError,
-    ApiRoot, Collection, InvalidArgumentsError, InvalidJSONError, Server,
-    Status, TAXIIServiceException, ValidationError,
+    DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
+)
+from taxii2client.common import (
     _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
 )
+from taxii2client.exceptions import (
+    AccessError, InvalidArgumentsError, InvalidJSONError,
+    TAXIIServiceException, ValidationError
+)
+from taxii2client.v20 import ApiRoot, Collection, Server, Status
 
 TAXII_SERVER = "example.com"
 DISCOVERY_URL = "https://{}/taxii/".format(TAXII_SERVER)
