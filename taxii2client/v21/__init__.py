@@ -67,8 +67,7 @@ class Status(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V21):
         """Updates Status information"""
-        response = self.__raw = self._conn.get(self.url,
-                                               headers={"Accept": accept})
+        response = self.__raw = self._conn.get(self.url, headers={"Accept": accept})
         self._populate_fields(**response)
 
     def wait_until_final(self, poll_interval=1, timeout=60):
@@ -330,8 +329,7 @@ class Collection(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V21):
         """Update Collection information"""
-        response = self.__raw = self._conn.get(self.url,
-                                               headers={"Accept": accept})
+        response = self.__raw = self._conn.get(self.url, headers={"Accept": accept})
         self._populate_fields(**response)
         self._loaded = True
 
@@ -339,8 +337,7 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Objects`` endpoint (section 5.3)"""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.objects_url, headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(self.objects_url, headers={"Accept": accept}, params=query_params)
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
@@ -349,26 +346,23 @@ class Collection(_TAXIIEndpoint):
         query_params = None
         if version:
             query_params = _filter_kwargs_to_query_params({"version": version})
-        return self._conn.get(url, headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(url, headers={"Accept": accept}, params=query_params)
 
     def delete_object(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Delete an Object`` endpoint (section 5.7)"""
         self._verify_can_write()
         url = self.objects_url + str(obj_id) + "/"
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.delete(url, headers={"Accept": accept},
-                                 params=query_params)
+        return self._conn.delete(url, headers={"Accept": accept}, params=query_params)
 
     def object_versions(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get Object Versions`` endpoint (section 5.8)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/versions/"
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(url, headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(url, headers={"Accept": accept}, params=query_params)
 
-    def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
+    def add_objects(self, envelope, wait_for_completion=True, poll_interval=1,
                     timeout=60, accept=MEDIA_TYPE_TAXII_V21,
                     content_type=MEDIA_TYPE_TAXII_V21):
         """Implement the ``Add Objects`` endpoint (section 5.4)
@@ -384,7 +378,8 @@ class Collection(_TAXIIEndpoint):
         expires, or the operation completes.
 
         Args:
-            bundle: A STIX bundle with the objects to add (string, dict, binary)
+            envelope: A TAXII envelope with the objects to add (string, dict,
+                binary)
             wait_for_completion (bool): Whether to wait for the add operation
                 to complete before returning
             poll_interval (int): If waiting for completion, how often to poll
@@ -413,30 +408,28 @@ class Collection(_TAXIIEndpoint):
             "Content-Type": content_type,
         }
 
-        if isinstance(bundle, dict):
-            json_text = json.dumps(bundle, ensure_ascii=False)
+        if isinstance(envelope, dict):
+            json_text = json.dumps(envelope, ensure_ascii=False)
             data = json_text.encode("utf-8")
 
-        elif isinstance(bundle, six.text_type):
-            data = bundle.encode("utf-8")
+        elif isinstance(envelope, six.text_type):
+            data = envelope.encode("utf-8")
 
-        elif isinstance(bundle, six.binary_type):
-            data = bundle
+        elif isinstance(envelope, six.binary_type):
+            data = envelope
 
         else:
             raise TypeError("Don't know how to handle type '{}'".format(
-                type(bundle).__name__))
+                type(envelope).__name__))
 
-        status_json = self._conn.post(self.objects_url, headers=headers,
-                                      data=data)
+        status_json = self._conn.post(self.objects_url, headers=headers, data=data)
 
         status_url = urlparse.urljoin(
             self.url,
             "../../status/{}".format(status_json["id"])
         )
 
-        status = Status(url=status_url, conn=self._conn,
-                        status_info=status_json)
+        status = Status(url=status_url, conn=self._conn, status_info=status_json)
 
         if not wait_for_completion or status.status == "complete":
             return status
@@ -449,9 +442,7 @@ class Collection(_TAXIIEndpoint):
         """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.url + "manifest/",
-                              headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(self.url + "manifest/", headers={"Accept": accept}, params=query_params)
 
 
 class ApiRoot(_TAXIIEndpoint):
@@ -691,14 +682,16 @@ class Server(_TAXIIEndpoint):
         self._description = description  # optional
         self._contact = contact  # optional
         roots = api_roots or []  # optional
-        self._api_roots = [ApiRoot(url,
-                                   user=self._user,
-                                   password=self._password,
-                                   verify=self._verify,
-                                   proxies=self._proxies)
-                           for url in roots]
+        self._api_roots = [
+            ApiRoot(urlparse.urljoin(self.url, url),
+                    user=self._user,
+                    password=self._password,
+                    verify=self._verify,
+                    proxies=self._proxies)
+            for url in roots
+        ]
         # If 'default' is one of the existing API Roots, reuse that object
-        # rather than creating a duplicate. The TAXII 2.0 spec says that the
+        # rather than creating a duplicate. The TAXII 2.1 spec says that the
         # `default` API Root MUST be an item in `api_roots`.
         root_dict = dict(zip(roots, self._api_roots))
         self._default = root_dict.get(default)  # optional
