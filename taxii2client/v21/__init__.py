@@ -339,13 +339,11 @@ class Collection(_TAXIIEndpoint):
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(self.objects_url, headers={"Accept": accept}, params=query_params)
 
-    def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_TAXII_V21):
+    def get_object(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
         self._verify_can_read()
         url = self.objects_url + str(obj_id) + "/"
-        query_params = None
-        if version:
-            query_params = _filter_kwargs_to_query_params({"version": version})
+        query_params = _filter_kwargs_to_query_params(filter_kwargs)
         return self._conn.get(url, headers={"Accept": accept}, params=query_params)
 
     def delete_object(self, obj_id, accept=MEDIA_TYPE_TAXII_V21, **filter_kwargs):
