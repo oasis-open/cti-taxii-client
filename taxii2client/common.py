@@ -7,7 +7,8 @@ import requests.auth
 import requests.structures
 import six
 
-from . import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V20
+
+from . import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V20, MEDIA_TYPE_TAXII_V21
 from .exceptions import (
     InvalidArgumentsError, InvalidJSONError, TAXIIServiceException
 )
@@ -139,7 +140,7 @@ class _TAXIIEndpoint(object):
 
     """
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None):
+                 proxies=None, version="2.0"):
         """Create a TAXII endpoint.
 
         Args:
@@ -149,6 +150,7 @@ class _TAXIIEndpoint(object):
             conn (_HTTPConnection): A connection to reuse (optional)
             proxies (dict): key/value pair for http/https proxy settings.
                 (optional)
+            version (str): The spec version this connection is meant to follow.
 
         """
         if conn and (user or password):
@@ -157,7 +159,7 @@ class _TAXIIEndpoint(object):
         elif conn:
             self._conn = conn
         else:
-            self._conn = _HTTPConnection(user, password, verify, proxies)
+            self._conn = _HTTPConnection(user, password, verify, proxies, version=version)
 
         # Add trailing slash to TAXII endpoint if missing
         # https://github.com/oasis-open/cti-taxii-client/issues/50
@@ -194,7 +196,7 @@ class _HTTPConnection(object):
     """
 
     def __init__(self, user=None, password=None, verify=True, proxies=None,
-                 user_agent=DEFAULT_USER_AGENT):
+                 user_agent=DEFAULT_USER_AGENT, version="2.0"):
         """Create a connection session.
 
         Args:
@@ -206,6 +208,7 @@ class _HTTPConnection(object):
             user_agent (str): A value to use for the User-Agent header in
                 requests.  If not given, use a default value which represents
                 this library.
+            version (str): The spec version this connection is meant to follow.
         """
         self.session = requests.Session()
         self.session.verify = verify
@@ -215,6 +218,7 @@ class _HTTPConnection(object):
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
         if proxies:
             self.session.proxies.update(proxies)
+        self.version = version
 
     def valid_content_type(self, content_type, accept):
         """Check that the server is returning a valid Content-Type
@@ -227,11 +231,17 @@ class _HTTPConnection(object):
         accept_tokens = accept.replace(' ', '').split(';')
         content_type_tokens = content_type.replace(' ', '').split(';')
 
-        return (
-                all(elem in content_type_tokens for elem in accept_tokens) and
-                (content_type_tokens[0] == 'application/vnd.oasis.taxii+json' or
-                 content_type_tokens[0] == 'application/vnd.oasis.stix+json')
-        )
+        if self.version == "2.0":
+            return (
+                    all(elem in content_type_tokens for elem in accept_tokens) and
+                    (content_type_tokens[0] == 'application/vnd.oasis.taxii+json' or
+                     content_type_tokens[0] == 'application/vnd.oasis.stix+json')
+            )
+        else:
+            return (
+                    all(elem in content_type_tokens for elem in accept_tokens) and
+                    content_type_tokens[0] == 'application/taxii+json'
+            )
 
     def get(self, url, headers=None, params=None):
         """Perform an HTTP GET, using the saved requests.Session and auth info.
@@ -249,8 +259,13 @@ class _HTTPConnection(object):
 
         merged_headers = self._merge_headers(headers)
 
+        if self.version == "2.0":
+            media_type = MEDIA_TYPE_TAXII_V20
+        else:
+            media_type = MEDIA_TYPE_TAXII_V21
+
         if "Accept" not in merged_headers:
-            merged_headers["Accept"] = MEDIA_TYPE_TAXII_V20
+            merged_headers["Accept"] = media_type
         accept = merged_headers["Accept"]
 
         resp = self.session.get(url, headers=merged_headers, params=params)
@@ -298,6 +313,12 @@ class _HTTPConnection(object):
         resp = self.session.post(url, headers=headers, params=params, **kwargs)
         resp.raise_for_status()
         return _to_json(resp)
+
+    def delete(self, url, headers=None, params=None, **kwargs):
+        """Perform HTTP DELETE"""
+        # TODO: May need more work...
+        resp = self.session.delete(url, headers=headers, params=params, **kwargs)
+        resp.raise_for_status()
 
     def close(self):
         """Closes connections.  This object is no longer usable."""
