@@ -7,7 +7,6 @@ import requests.auth
 import requests.structures
 import six
 
-
 from . import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V20, MEDIA_TYPE_TAXII_V21
 from .exceptions import (
     InvalidArgumentsError, InvalidJSONError, TAXIIServiceException
@@ -96,6 +95,12 @@ def _filter_kwargs_to_query_params(filter_kwargs):
             query_params["added_after"] = ",".join(
                 _ensure_datetime_to_string(val) for val in arglist
             )
+
+        elif kwarg == "limit":
+            query_params["limit"] = int(arglist[0])
+
+        elif kwarg == "next":
+            query_params["next"] = arglist
 
         else:
             query_params["match[" + kwarg + "]"] = ",".join(arglist)
@@ -278,7 +283,7 @@ class _HTTPConnection(object):
             msg = "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'"
             raise TAXIIServiceException(msg.format(content_type, accept))
 
-        if "Range" in merged_headers:
+        if "Range" in merged_headers and self.version == "2.0":
             return resp
         else:
             return _to_json(resp)
