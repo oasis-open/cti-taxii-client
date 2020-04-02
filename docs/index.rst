@@ -6,7 +6,7 @@
 TAXII 2 Python API Documentation
 ================================
 
-*taxii2client* is a minimal implementation of a TAXII 2.0 Client in Python. It
+*taxii2client* is a minimal implementation of a TAXII 2.0 and 2.1 Client in Python. It
 currently supports the current services:
 
 - Server Discovery
@@ -17,19 +17,17 @@ currently supports the current services:
 - Get Objects
 - Add Objects
 - Get an Object
+- Delete an Object (2.1 only)
 - Get Object Manifests
-
+- Get Object Versions (2.1 only)
 
 API Reference
 =============
-
 
 .. toctree::
    :maxdepth: 3
 
    api/api_reference
-   contributing
-
 
 Indices and tables
 ==================
