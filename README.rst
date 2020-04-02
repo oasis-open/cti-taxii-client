@@ -1,6 +1,5 @@
 |Build_Status| |Coverage| |Version|
 
-================
 cti-taxii-client
 ================
 
@@ -8,8 +7,8 @@ NOTE: This is an `OASIS TC Open Repository
 <https://www.oasis-open.org/resources/open-repositories/>`_. See the
 `Governance`_ section for more information.
 
-cti-taxii-client is a minimal client implementation for the TAXII 2.0 server.
-It supports the following TAXII 2.0 API services:
+cti-taxii-client is a minimal client implementation for the TAXII 2.X server.
+It supports the following TAXII 2.X API services:
 
 - Server Discovery
 - Get API Root Information
@@ -19,18 +18,21 @@ It supports the following TAXII 2.0 API services:
 - Get Objects
 - Add Objects
 - Get an Object
+- Delete an Object (2.1 only)
 - Get Object Manifests
+- Get Object Versions (2.1 only)
 
 Installation
-============
+------------
 
-The easiest way to install the TAXII client is with pip::
+The easiest way to install the TAXII client is with pip
+
+.. code-block:: bash
 
    $ pip install taxii2-client
 
-
 Usage
-=====
+-----
 
 The TAXII client is intended to be used as a Python library.  There are no
 command line clients at this time.
@@ -44,17 +46,19 @@ command line clients at this time.
 
 Each can be instantiated by passing a `url`, and (optional) `user` and
 `password` arguments. The authorization information is stored in the instance,
-so it need not be supplied explicitly when requesting services.
+so it need not be supplied explicitly when requesting services. By default, the
+latest version of the supported spec will be imported. If you need a specific
+version you can perform the following:
 
-.. code:: python
+.. code-block:: python
 
-   from taxii2client import Server
-   server = Server('https://example.com/taxii/', user='user_id', password='user_password')
+   from taxii2client.v21 import Server
+   server = Server('https://example.com/taxii2/', user='user_id', password='user_password')
 
 Once you have instantiated a ``Server`` object, you can get all metadata about
 its contents via its properties:
 
-.. code:: python
+.. code-block:: python
 
    print(server.title)
 
@@ -69,18 +73,11 @@ This will lazily load and cache the server's information in the instance:
 You can follow references to ``ApiRoot`` objects,
 ``Collection`` objects, and (STIX) objects in those collections.
 
-.. code:: python
+.. code-block:: python
 
    api_root = server.api_roots[0]
    collection = api_root.collections[0]
    collection.add_objects(stix_bundle)
-
-Additionally, you can access ``ApiRoot`` objects directly through the URL (which can be especially
-helpful when running a server and client on localhost):
-
-.. code:: python
-
-   server = Server('https://example.com/<ApiRoot Name>/', user='user_id', password='user_password')
 
 Each ``ApiRoot`` has attributes corresponding to its meta data
 
@@ -94,37 +91,58 @@ Each ``Collection`` has attributes corresponding to its meta data:
 - ``id``
 - ``title``
 - ``description``
+- ``alias`` (2.1 only)
 - ``can_write``
 - ``can_read``
 - ``media_types``
 
 A ``Collection`` can also be instantiated directly:
 
-.. code:: python
+.. code-block:: python
 
-   from taxii2client.v20 import Collection, as_pages
+    # Performing TAXII 2.0 Requests
+    from taxii2client.v20 import Collection, as_pages
 
-   collection = Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
-   collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+    collection = Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
+    collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
 
-   # For normal (no pagination) requests
-   collection.get_objects()
-   collection.get_manifest()
+    # For normal (no pagination) requests
+    collection.get_objects()
+    collection.get_manifest()
 
-   # For pagination requests.
-   for bundle in as_pages(collection.get_objects, per_request=50):
-       print(bundle)
+    # For pagination requests.
+    for bundle in as_pages(collection.get_objects, per_request=50):
+        print(bundle)
 
-   for manifest_resource in as_pages(collection.get_manifest, per_request=50):
-       print(manifest_resource)
+    for manifest_resource in as_pages(collection.get_manifest, per_request=50):
+        print(manifest_resource)
 
+    # ---------------------------------------------------------------- #
+    # Performing TAXII 2.1 Requests
+    from taxii2client.v21 import Collection
+
+    collection = Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
+    collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+
+    # For normal (no pagination) requests
+    collection.get_objects()
+    collection.get_manifest()
+
+    # For pagination requests.
+    envelope = collection.get_objects(limit=50)
+    while envelope.get("more", False):
+        envelope = collection.get_objects(limit=50, next=envelope.get("next", ""))
+
+    envelope = collection.get_manifest(limit=50)
+    while envelope.get("more", False):
+        envelope = collection.get_manifest(limit=50, next=envelope.get("next", ""))
 
 In addition to the object-specific properties and methods, all classes have a
 ``refresh()`` method that reloads the URL corresponding to that resource, to
 ensure properties have the most up-to-date values.
 
 Governance
-==========
+----------
 
 This GitHub public repository (
 **https://github.com/oasis-open/cti-taxii-client** ) was created at the request
@@ -181,7 +199,7 @@ additional or substitute Maintainers, per `consensus agreements
 <https://www.oasis-open.org/resources/open-repositories/maintainers-guide#additionalMaintainers>`__.
 
 Current Maintainers of this TC Open Repository
-----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -  `Chris Lenk <mailto:clenk@mitre.org>`__; GitHub ID:
    https://github.com/clenk/; WWW: `MITRE
