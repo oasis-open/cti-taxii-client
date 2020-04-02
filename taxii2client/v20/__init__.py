@@ -737,6 +737,3 @@ class Server(_TAXIIEndpoint):
         response = self.__raw = self._conn.get(self.url)
         self._populate_fields(**response)
         self._loaded = True
-
-
-__all__ = ["ApiRoot", "Collection", "Server", "Status", "as_pages"]
