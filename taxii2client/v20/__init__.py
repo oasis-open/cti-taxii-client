@@ -10,9 +10,11 @@ import six
 import six.moves.urllib.parse as urlparse
 
 from .. import MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
-from ..common import _filter_kwargs_to_query_params, _grab_total_items, _to_json, _TAXIIEndpoint
+from ..common import (
+    _filter_kwargs_to_query_params, _grab_total_items, _TAXIIEndpoint,
+    _to_json
+)
 from ..exceptions import AccessError, ValidationError
-
 
 # Module-level logger
 log = logging.getLogger(__name__)
