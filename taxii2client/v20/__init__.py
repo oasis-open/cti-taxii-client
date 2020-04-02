@@ -3,14 +3,48 @@
 from __future__ import unicode_literals
 
 import json
+import logging
 import time
 
 import six
 import six.moves.urllib.parse as urlparse
 
 from .. import MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
-from ..common import _filter_kwargs_to_query_params, _TAXIIEndpoint
+from ..common import _filter_kwargs_to_query_params, _grab_total_items, _to_json, _TAXIIEndpoint
 from ..exceptions import AccessError, ValidationError
+
+
+# Module-level logger
+log = logging.getLogger(__name__)
+log.propagate = False
+
+formatter = logging.Formatter("[%(name)s] [%(levelname)s] [%(asctime)s] %(message)s")
+
+# Console Handler for taxii2client messages
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+log.addHandler(ch)
+
+
+def as_pages(func, start=0, per_request=0, *args, **kwargs):
+    """Creates a generator for TAXII 2.0 endpoints that support pagination."""
+    resp = func(start=start, per_request=per_request, *args, **kwargs)
+    yield _to_json(resp)
+    total_obtained, total_available = _grab_total_items(resp)
+
+    if total_obtained != per_request:
+        log.warning("TAXII Server response with different amount of objects! Setting per_request=%s", total_obtained)
+        per_request = total_obtained
+
+    start += per_request
+    while start < total_available:
+
+        resp = func(start=start, per_request=per_request, *args, **kwargs)
+        yield _to_json(resp)
+
+        total_in_request, total_available = _grab_total_items(resp)
+        total_obtained += total_in_request
+        start += per_request
 
 
 class Status(_TAXIIEndpoint):
@@ -265,6 +299,10 @@ class Collection(_TAXIIEndpoint):
         return self.url + "objects/"
 
     @property
+    def manifest_url(self):
+        return self.url + "manifest/"
+
+    @property
     def _raw(self):
         """Get the "raw" collection information response (parsed JSON)."""
         self._ensure_loaded()
@@ -329,12 +367,16 @@ class Collection(_TAXIIEndpoint):
         self._populate_fields(**response)
         self._loaded = True
 
-    def get_objects(self, accept=MEDIA_TYPE_STIX_V20, **filter_kwargs):
-        """Implement the ``Get Objects`` endpoint (section 5.3)"""
+    def get_objects(self, accept=MEDIA_TYPE_STIX_V20, start=0, per_request=0, **filter_kwargs):
+        """Implement the ``Get Objects`` endpoint (section 5.3). For pagination requests use ``as_pages`` method."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.objects_url, headers={"Accept": accept},
-                              params=query_params)
+        headers = {"Accept": accept}
+
+        if per_request > 0:
+            headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+
+        return self._conn.get(self.objects_url, headers=headers, params=query_params)
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
@@ -343,8 +385,7 @@ class Collection(_TAXIIEndpoint):
         query_params = None
         if version:
             query_params = _filter_kwargs_to_query_params({"version": version})
-        return self._conn.get(url, headers={"Accept": accept},
-                              params=query_params)
+        return self._conn.get(url, headers={"Accept": accept}, params=query_params)
 
     def add_objects(self, bundle, wait_for_completion=True, poll_interval=1,
                     timeout=60, accept=MEDIA_TYPE_TAXII_V20,
@@ -423,13 +464,16 @@ class Collection(_TAXIIEndpoint):
 
         return status
 
-    def get_manifest(self, accept=MEDIA_TYPE_TAXII_V20, **filter_kwargs):
-        """Implement the ``Get Object Manifests`` endpoint (section 5.6)."""
+    def get_manifest(self, accept=MEDIA_TYPE_TAXII_V20, start=0, per_request=0, **filter_kwargs):
+        """Implement the ``Get Object Manifests`` endpoint (section 5.6). For pagination requests use ``as_pages`` method."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
-        return self._conn.get(self.url + "manifest/",
-                              headers={"Accept": accept},
-                              params=query_params)
+        headers = {"Accept": accept}
+
+        if per_request > 0:
+            headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+
+        return self._conn.get(self.manifest_url, headers=headers, params=query_params)
 
 
 class ApiRoot(_TAXIIEndpoint):
@@ -693,4 +737,4 @@ class Server(_TAXIIEndpoint):
         self._loaded = True
 
 
-__all__ = ["ApiRoot", "Collection", "Server", "Status"]
+__all__ = ["ApiRoot", "Collection", "Server", "Status", "as_pages"]

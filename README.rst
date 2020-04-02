@@ -102,9 +102,22 @@ A ``Collection`` can also be instantiated directly:
 
 .. code:: python
 
-   from taxii2client import Collection
+   from taxii2client.v20 import Collection, as_pages
+
    collection = Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
    collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+
+   # For normal (no pagination) requests
+   collection.get_objects()
+   collection.get_manifest()
+
+   # For pagination requests.
+   for bundle in as_pages(collection.get_objects, per_request=50):
+       print(bundle)
+
+   for manifest_resource in as_pages(collection.get_manifest, per_request=50):
+       print(manifest_resource)
+
 
 In addition to the object-specific properties and methods, all classes have a
 ``refresh()`` method that reloads the URL corresponding to that resource, to

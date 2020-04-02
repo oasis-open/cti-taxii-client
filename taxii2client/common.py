@@ -1,4 +1,5 @@
 import datetime
+import re
 
 import pytz
 import requests
@@ -119,6 +120,17 @@ def _to_json(resp):
         ), e)
 
 
+def _grab_total_items(resp):
+    """Extracts the Total elements available on the Endpoint making the request"""
+    try:
+        results = re.match(r"^items (\d+)-(\d+)/(\d+)$", resp.headers["Content-Range"])
+        return int(results.group(2)) - int(results.group(1)) + 1, int(results.group(3))
+    except ValueError as e:
+        six.raise_from(InvalidJSONError(
+            "Invalid Content-Range was received from " + resp.request.url
+        ), e)
+
+
 class _TAXIIEndpoint(object):
     """Contains some data and functionality common to all TAXII endpoint
     classes: a URL, connection, and ability to close the connection.  It also
@@ -127,7 +139,7 @@ class _TAXIIEndpoint(object):
 
     """
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, version="2.0"):
+                 proxies=None):
         """Create a TAXII endpoint.
 
         Args:
@@ -251,7 +263,10 @@ class _HTTPConnection(object):
             msg = "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'"
             raise TAXIIServiceException(msg.format(content_type, accept))
 
-        return _to_json(resp)
+        if "Range" in merged_headers:
+            return resp
+        else:
+            return _to_json(resp)
 
     def post(self, url, headers=None, params=None, **kwargs):
         """Send a JSON POST request with the given request headers, additional
