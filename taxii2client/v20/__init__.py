@@ -34,7 +34,7 @@ def as_pages(func, start=0, per_request=0, *args, **kwargs):
     yield _to_json(resp)
     total_obtained, total_available = _grab_total_items(resp)
 
-    if total_obtained != per_request:
+    if total_available > per_request and total_obtained != per_request:
         log.warning("TAXII Server response with different amount of objects! Setting per_request=%s", total_obtained)
         per_request = total_obtained
 
