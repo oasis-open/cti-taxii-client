@@ -62,7 +62,7 @@ class Status(_TAXIIEndpoint):
     # aren't other endpoints to call on the Status object.
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, status_info=None):
+                 proxies=None, status_info=None, auth=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -79,7 +79,7 @@ class Status(_TAXIIEndpoint):
                 (optional)
 
         """
-        super(Status, self).__init__(url, conn, user, password, verify, proxies)
+        super(Status, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
         self.__raw = None
         if status_info:
             self._populate_fields(**status_info)
@@ -223,7 +223,7 @@ class Collection(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, collection_info=None):
+                 proxies=None, collection_info=None, auth=None):
         """
         Initialize a new Collection.  Either user/password or conn may be
         given, but not both.  The latter is intended for internal use, when
@@ -247,7 +247,7 @@ class Collection(_TAXIIEndpoint):
 
         """
 
-        super(Collection, self).__init__(url, conn, user, password, verify, proxies)
+        super(Collection, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
 
         self._loaded = False
         self.__raw = None
@@ -496,7 +496,7 @@ class ApiRoot(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None):
+                 proxies=None, auth=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -510,7 +510,7 @@ class ApiRoot(_TAXIIEndpoint):
                 (optional)
 
         """
-        super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies)
+        super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
 
         self._loaded_collections = False
         self._loaded_information = False
@@ -639,7 +639,7 @@ class Server(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None):
+                 proxies=None, auth=None):
         """Create a server discovery endpoint.
 
         Args:
@@ -653,7 +653,7 @@ class Server(_TAXIIEndpoint):
                 (optional)
 
         """
-        super(Server, self).__init__(url, conn, user, password, verify, proxies)
+        super(Server, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
 
         self._user = user
         self._password = password
@@ -661,6 +661,7 @@ class Server(_TAXIIEndpoint):
         self._proxies = proxies
         self._loaded = False
         self.__raw = None
+        self._auth = auth
 
     @property
     def title(self):
@@ -719,7 +720,8 @@ class Server(_TAXIIEndpoint):
                                    user=self._user,
                                    password=self._password,
                                    verify=self._verify,
-                                   proxies=self._proxies)
+                                   proxies=self._proxies,
+                                   auth=self._auth)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.0 spec says that the

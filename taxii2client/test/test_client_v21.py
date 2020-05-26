@@ -7,7 +7,7 @@ import six
 
 from taxii2client import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V21
 from taxii2client.common import (
-    _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
+    TokenAuth, _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
 )
 from taxii2client.exceptions import (
     AccessError, InvalidArgumentsError, InvalidJSONError,
@@ -733,11 +733,28 @@ def test_params_filter_unknown():
 def test_taxii_endpoint_raises_exception():
     """Test exception is raised when conn and (user or pass) is provided"""
     conn = _HTTPConnection(user="foo", password="bar", verify=False)
+    error_str = "Only one of a connection, username/password, or auth object may be provided."
+    fake_url = "https://example.com/api1/collections/"
 
     with pytest.raises(InvalidArgumentsError) as excinfo:
-        _TAXIIEndpoint("https://example.com/api1/collections/", conn, "other", "test")
+        _TAXIIEndpoint(fake_url, conn, "other", "test")
 
-    assert "A connection and user/password may not both be provided." in str(excinfo.value)
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, conn, auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, user="other", password="test", auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, conn, "other", "test", auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
 
 
 @responses.activate
