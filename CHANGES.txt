@@ -1,3 +1,8 @@
+Version 2.1.0
+2020-06-09
+- #68 Support for user-specified authentication including token-based authentication.
+- #71 Don't log a warning when the total number of available objects is less than the per request size limit.
+
 Version 2.0.0
 2020-04-01
 Base release of the TAXII Client for 2.1. Unsupported features:
