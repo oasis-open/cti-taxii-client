@@ -376,7 +376,7 @@ class Collection(_TAXIIEndpoint):
         headers = {"Accept": accept}
 
         if per_request > 0:
-            headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+            headers["Range"] = "items={}-{}".format(start, (start + per_request) - 1)
 
         return self._conn.get(self.objects_url, headers=headers, params=query_params)
 
