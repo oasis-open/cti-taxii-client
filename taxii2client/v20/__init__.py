@@ -1,5 +1,4 @@
 """Python TAXII 2.0 Client API"""
-
 from __future__ import unicode_literals
 
 import json
@@ -7,7 +6,7 @@ import logging
 import time
 
 import six
-import six.moves.urllib.parse as urlparse
+from six.moves.urllib import parse as urlparse
 
 from .. import MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
 from ..common import (

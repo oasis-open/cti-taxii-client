@@ -1,12 +1,11 @@
 """Python TAXII 2.1 Client API"""
-
 from __future__ import unicode_literals
 
 import json
 import time
 
 import six
-import six.moves.urllib.parse as urlparse
+from six.moves.urllib import parse as urlparse
 
 from .. import MEDIA_TYPE_TAXII_V21
 from ..common import _filter_kwargs_to_query_params, _TAXIIEndpoint
