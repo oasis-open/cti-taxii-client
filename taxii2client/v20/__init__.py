@@ -172,19 +172,19 @@ class Status(_TAXIIEndpoint):
             msg = "No 'pending_count' in Status for request '{}'"
             raise ValidationError(msg.format(self.url))
 
-        if len(self.successes) != self.success_count:
+        if self.successes and len(self.successes) != self.success_count:
             msg = "Found successes={}, but success_count={} in status '{}'"
             raise ValidationError(msg.format(self.successes,
                                              self.success_count,
                                              self.id))
 
-        if len(self.pendings) != self.pending_count:
+        if self.pendings and len(self.pendings) != self.pending_count:
             msg = "Found pendings={}, but pending_count={} in status '{}'"
             raise ValidationError(msg.format(self.pendings,
                                              self.pending_count,
                                              self.id))
 
-        if len(self.failures) != self.failure_count:
+        if self.failures and len(self.failures) != self.failure_count:
             msg = "Found failures={}, but failure_count={} in status '{}'"
             raise ValidationError(msg.format(self.failures,
                                              self.failure_count,
