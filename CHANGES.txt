@@ -1,3 +1,7 @@
+Version 2.2.1
+2020-07-17
+- #78 Prevent KeyError when TAXII Server Response does not include 'Content-Range' Header (v20)
+
 Version 2.2.0
 2020-07-02
 - #76 drop python versions older than 3.5
