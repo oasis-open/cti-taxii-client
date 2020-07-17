@@ -18,24 +18,24 @@ from ..exceptions import AccessError, ValidationError
 
 # Module-level logger
 log = logging.getLogger(__name__)
-log.propagate = False
-
-formatter = logging.Formatter("[%(name)s] [%(levelname)s] [%(asctime)s] %(message)s")
-
-# Console Handler for taxii2client messages
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-log.addHandler(ch)
 
 
 def as_pages(func, start=0, per_request=0, *args, **kwargs):
-    """Creates a generator for TAXII 2.0 endpoints that support pagination."""
+    """Creates a generator for TAXII 2.0 endpoints that support pagination.
+        Args:
+            func (callable): A v20 function call that supports paged requests.
+                Currently Get Objects and Get Manifest.
+            start (int): The starting point for the page request. Default 0.
+            per_request (int): How many items per request. Default 0.
+
+    Use args or kwargs to pass filter information or other arguments required to make the call.
+    """
     resp = func(start=start, per_request=per_request, *args, **kwargs)
     yield _to_json(resp)
     total_obtained, total_available = _grab_total_items(resp)
 
     if total_available > per_request and total_obtained != per_request:
-        log.warning("TAXII Server response with different amount of objects! Setting per_request=%s", total_obtained)
+        log.warning("TAXII Server Response with different amount of objects! Setting per_request=%s", total_obtained)
         per_request = total_obtained
 
     start += per_request
@@ -467,7 +467,8 @@ class Collection(_TAXIIEndpoint):
         return status
 
     def get_manifest(self, accept=MEDIA_TYPE_TAXII_V20, start=0, per_request=0, **filter_kwargs):
-        """Implement the ``Get Object Manifests`` endpoint (section 5.6). For pagination requests use ``as_pages`` method."""
+        """Implement the ``Get Object Manifests`` endpoint (section 5.6).
+        For pagination requests use ``as_pages`` method."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         headers = {"Accept": accept}
