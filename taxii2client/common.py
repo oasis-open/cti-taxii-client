@@ -1,4 +1,5 @@
 import datetime
+import logging
 import re
 
 import pytz
@@ -11,6 +12,9 @@ from . import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V20, MEDIA_TYPE_TAXII_V21
 from .exceptions import (
     InvalidArgumentsError, InvalidJSONError, TAXIIServiceException
 )
+
+# Module-level logger
+log = logging.getLogger(__name__)
 
 
 def _format_datetime(dttm):
@@ -131,10 +135,13 @@ def _grab_total_items(resp):
     try:
         results = re.match(r"^items (\d+)-(\d+)/(\d+)$", resp.headers["Content-Range"])
         return int(results.group(2)) - int(results.group(1)) + 1, int(results.group(3))
-    except ValueError as e:
+    except (ValueError, IndexError) as e:
         six.raise_from(InvalidJSONError(
             "Invalid Content-Range was received from " + resp.request.url
         ), e)
+    except KeyError:
+        log.warning("TAXII Server Response did not include 'Content-Range' header - results could be incomplete")
+        return 0, 0
 
 
 class TokenAuth(requests.auth.AuthBase):
