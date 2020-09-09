@@ -375,9 +375,20 @@ class Collection(_TAXIIEndpoint):
         headers = {"Accept": accept}
 
         if per_request > 0:
-            headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+            headers["Range"] = "items={}-{}".format(start, (start + per_request) - 1)
 
-        return self._conn.get(self.objects_url, headers=headers, params=query_params)
+        try:
+            response = self._conn.get(self.objects_url, headers=headers, params=query_params)
+
+        except requests.HTTPError as e:
+            if per_request > 0:
+                headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+
+                response = self._conn.get(self.objects_url, headers=headers, params=query_params)
+            else:
+                raise requests.HTTPError(e)
+
+        return response
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
