@@ -5,6 +5,7 @@ import json
 import logging
 import time
 
+import requests.exceptions
 import six
 from six.moves.urllib import parse as urlparse
 
@@ -377,7 +378,17 @@ class Collection(_TAXIIEndpoint):
         if per_request > 0:
             headers["Range"] = "items={}-{}".format(start, (start + per_request) - 1)
 
-        return self._conn.get(self.objects_url, headers=headers, params=query_params)
+        try:
+            response = self._conn.get(self.objects_url, headers=headers, params=query_params)
+        except requests.exceptions.HTTPError as e:
+            if per_request > 0:
+                # This is believed to be an error in TAXII 2.0
+                # http://docs.oasis-open.org/cti/taxii/v2.0/cs01/taxii-v2.0-cs01.html#_Toc496542716
+                headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+                response = self._conn.get(self.objects_url, headers=headers, params=query_params)
+            else:
+                raise e
+        return response
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
@@ -475,7 +486,17 @@ class Collection(_TAXIIEndpoint):
         if per_request > 0:
             headers["Range"] = "items={}-{}".format(start, (start + per_request) - 1)
 
-        return self._conn.get(self.manifest_url, headers=headers, params=query_params)
+        try:
+            response = self._conn.get(self.manifest_url, headers=headers, params=query_params)
+        except requests.exceptions.HTTPError as e:
+            if per_request > 0:
+                # This is believed to be an error in TAXII 2.0
+                # http://docs.oasis-open.org/cti/taxii/v2.0/cs01/taxii-v2.0-cs01.html#_Toc496542716
+                headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+                response = self._conn.get(self.manifest_url, headers=headers, params=query_params)
+            else:
+                raise e
+        return response
 
 
 class ApiRoot(_TAXIIEndpoint):
