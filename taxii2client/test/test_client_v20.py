@@ -2,6 +2,7 @@ import datetime
 import json
 
 import pytest
+import requests
 import responses
 import six
 
@@ -193,6 +194,18 @@ STATUS_RESPONSE = """{
 
 BAD_DISCOVERY_RESPONSE = """{"title":"""
 
+ERROR_MESSAGE = """{
+  "title": "Error condition XYZ",
+  "description": "This error is caused when the application tries to access data...",
+  "error_id": "1234",
+  "error_code": "581234",
+  "http_status": "%s",
+  "external_details": "http://example.com/ticketnumber1/errorid-1234",
+  "details": {
+    "somekey1": "somevalue",
+    "somekey2": "some other value"
+  }
+}"""
 
 @pytest.fixture
 def status_dict():
@@ -994,3 +1007,38 @@ def test_collection_missing_trailing_slash():
     response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     indicator = response["objects"][0]
     assert indicator["id"] == "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
+
+
+@responses.activate
+def test_get_objects_pagination_success(collection):
+    responses.add(responses.GET, GET_OBJECTS_URL, GET_OBJECTS_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+
+    response = collection.get_objects(per_request=50).json()
+    indicator = response["objects"][0]
+    assert len(response["objects"]) == 1
+    assert indicator["id"] == "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
+
+
+@responses.activate
+def test_get_objects_pagination_fail(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, GET_OBJECTS_URL, error,
+                  status=400, content_type=MEDIA_TYPE_STIX_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_objects(per_request=50).json()
+
+    assert e.value.response.status_code == 400
+
+
+@responses.activate
+def test_get_objects_pagination_fail_no_page(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, GET_OBJECTS_URL, error,
+                  status=400, content_type=MEDIA_TYPE_STIX_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_objects().json()
+
+    assert e.value.response.status_code == 400
