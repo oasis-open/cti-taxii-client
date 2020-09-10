@@ -207,6 +207,7 @@ ERROR_MESSAGE = """{
   }
 }"""
 
+
 @pytest.fixture
 def status_dict():
     return {
