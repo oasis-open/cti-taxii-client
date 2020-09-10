@@ -1043,3 +1043,40 @@ def test_get_objects_pagination_fail_no_page(collection):
         collection.get_objects().json()
 
     assert e.value.response.status_code == 400
+
+
+@responses.activate
+def test_get_manifests_pagination_success(collection):
+    responses.add(responses.GET, MANIFEST_URL, GET_MANIFEST_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+
+    response = collection.get_manifest(per_request=50).json()
+    assert len(response["objects"]) == 2
+    obj = response["objects"][0]
+    assert obj["id"] == "indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b"
+    assert len(obj["versions"]) == 2
+    assert obj["media_types"][0] == MEDIA_TYPE_STIX_V20
+
+
+@responses.activate
+def test_get_manifests_pagination_fail(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, MANIFEST_URL, error,
+                  status=400, content_type=MEDIA_TYPE_TAXII_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_manifest(per_request=50).json()
+
+    assert e.value.response.status_code == 400
+
+
+@responses.activate
+def test_get_manifests_pagination_fail_no_page(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, MANIFEST_URL, error,
+                  status=400, content_type=MEDIA_TYPE_STIX_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_manifest().json()
+
+    assert e.value.response.status_code == 400
