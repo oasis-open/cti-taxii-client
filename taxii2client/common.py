@@ -295,12 +295,26 @@ class _HTTPConnection(object):
 
         resp = self.session.get(url, headers=merged_headers, params=params)
 
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if resp.status_code == 406:
+                # Provide more details about this error since its usually an import problem.
+                # Import the correct version of the TAXII Client.
+                logging.error(
+                    "Server Response: 406 Client Error "
+                    "If you are trying to contact a TAXII 2.0 Server use 'from taxii2client.v20 import X'. "
+                    "If you are trying to contact a TAXII 2.1 Server use 'from taxii2client.v21 import X'"
+                )
+            raise e
 
         content_type = resp.headers["Content-Type"]
-
         if not self.valid_content_type(content_type=content_type, accept=accept):
-            msg = "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'"
+            msg = (
+                "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'\n"
+                "If you are trying to contact a TAXII 2.0 Server use 'from taxii2client.v20 import X'\n"
+                "If you are trying to contact a TAXII 2.1 Server use 'from taxii2client.v21 import X'"
+            )
             raise TAXIIServiceException(msg.format(content_type, accept))
 
         if "Range" in merged_headers and self.version == "2.0":

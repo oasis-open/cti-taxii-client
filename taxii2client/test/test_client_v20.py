@@ -778,7 +778,18 @@ def test_invalid_content_type_for_connection():
 
     assert ("Unexpected Response. Got Content-Type: 'application/vnd.oasis.taxii+json; "
             "version=2.0' for Accept: 'application/vnd.oasis.taxii+json; version=2.0; "
-            "charset=utf-8'") == str(excinfo.value)
+            "charset=utf-8'") in str(excinfo.value)
+
+
+@responses.activate
+def test_invalid_accept_for_connection():
+    responses.add(responses.GET, COLLECTION_URL, COLLECTIONS_RESPONSE,
+                  status=406, content_type=MEDIA_TYPE_TAXII_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        conn = _HTTPConnection(user="foo", password="bar", verify=False)
+        conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                 headers={"Accept": "application/taxii+json; version=2.1"})
 
 
 def test_status_missing_id_property(status_dict):
@@ -1074,7 +1085,7 @@ def test_get_manifests_pagination_fail(collection):
 def test_get_manifests_pagination_fail_no_page(collection):
     error = ERROR_MESSAGE % "400"
     responses.add(responses.GET, MANIFEST_URL, error,
-                  status=400, content_type=MEDIA_TYPE_STIX_V20)
+                  status=400, content_type=MEDIA_TYPE_TAXII_V20)
 
     with pytest.raises(requests.exceptions.HTTPError) as e:
         collection.get_manifest().json()
