@@ -2,12 +2,13 @@ import datetime
 import json
 
 import pytest
+import requests
 import responses
 import six
 
 from taxii2client import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V21
 from taxii2client.common import (
-    _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
+    TokenAuth, _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
 )
 from taxii2client.exceptions import (
     AccessError, InvalidArgumentsError, InvalidJSONError,
@@ -733,11 +734,28 @@ def test_params_filter_unknown():
 def test_taxii_endpoint_raises_exception():
     """Test exception is raised when conn and (user or pass) is provided"""
     conn = _HTTPConnection(user="foo", password="bar", verify=False)
+    error_str = "Only one of a connection, username/password, or auth object may be provided."
+    fake_url = "https://example.com/api1/collections/"
 
     with pytest.raises(InvalidArgumentsError) as excinfo:
-        _TAXIIEndpoint("https://example.com/api1/collections/", conn, "other", "test")
+        _TAXIIEndpoint(fake_url, conn, "other", "test")
 
-    assert "A connection and user/password may not both be provided." in str(excinfo.value)
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, conn, auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, user="other", password="test", auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, conn, "other", "test", auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
 
 
 @responses.activate
@@ -766,7 +784,18 @@ def test_invalid_content_type_for_connection():
 
     assert ("Unexpected Response. Got Content-Type: 'application/taxii+json; "
             "version=2.1' for Accept: 'application/taxii+json; version=2.1; "
-            "charset=utf-8'") == str(excinfo.value)
+            "charset=utf-8'") in str(excinfo.value)
+
+
+@responses.activate
+def test_invalid_accept_for_connection():
+    responses.add(responses.GET, COLLECTION_URL, COLLECTIONS_RESPONSE,
+                  status=406, content_type=MEDIA_TYPE_TAXII_V21)
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        conn = _HTTPConnection(user="foo", password="bar", verify=False)
+        conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                 headers={"Accept": "application/taxii+json; version=2.1"})
 
 
 def test_status_missing_id_property(status_dict):

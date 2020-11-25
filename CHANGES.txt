@@ -1,3 +1,23 @@
+Version 2.2.2
+2020-09-10
+- #85 Provide more details when a Server Response status code is 406. (v20, v21)
+- #84 Fallback "Range" HTTP Header for pagination requests. (@teizenman) (v20)
+- #81 More flexibility for the Status Endpoint validation. It no longer fails for optional successes, pendings, failures lists (@maybe-sybr) (v20, v21)
+
+Version 2.2.1
+2020-07-17
+- #78 Prevent KeyError when TAXII Server Response does not include 'Content-Range' Header (v20)
+
+Version 2.2.0
+2020-07-02
+- #76 drop python versions older than 3.5
+- #75 fixes construction of Range Header for paginated requests RFC 7233. (@dougle)
+
+Version 2.1.0
+2020-06-09
+- #68 Support for user-specified authentication including token-based authentication.
+- #71 Don't log a warning when the total number of available objects is less than the per request size limit.
+
 Version 2.0.0
 2020-04-01
 Base release of the TAXII Client for 2.1. Unsupported features:

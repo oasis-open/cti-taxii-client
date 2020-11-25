@@ -2,6 +2,7 @@ import datetime
 import json
 
 import pytest
+import requests
 import responses
 import six
 
@@ -9,7 +10,7 @@ from taxii2client import (
     DEFAULT_USER_AGENT, MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
 )
 from taxii2client.common import (
-    _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
+    TokenAuth, _filter_kwargs_to_query_params, _HTTPConnection, _TAXIIEndpoint
 )
 from taxii2client.exceptions import (
     AccessError, InvalidArgumentsError, InvalidJSONError,
@@ -192,6 +193,19 @@ STATUS_RESPONSE = """{
 }"""
 
 BAD_DISCOVERY_RESPONSE = """{"title":"""
+
+ERROR_MESSAGE = """{
+  "title": "Error condition XYZ",
+  "description": "This error is caused when the application tries to access data...",
+  "error_id": "1234",
+  "error_code": "581234",
+  "http_status": "%s",
+  "external_details": "http://example.com/ticketnumber1/errorid-1234",
+  "details": {
+    "somekey1": "somevalue",
+    "somekey2": "some other value"
+  }
+}"""
 
 
 @pytest.fixture
@@ -714,11 +728,28 @@ def test_params_filter_unknown():
 def test_taxii_endpoint_raises_exception():
     """Test exception is raised when conn and (user or pass) is provided"""
     conn = _HTTPConnection(user="foo", password="bar", verify=False)
+    error_str = "Only one of a connection, username/password, or auth object may be provided."
+    fake_url = "https://example.com/api1/collections/"
 
     with pytest.raises(InvalidArgumentsError) as excinfo:
-        _TAXIIEndpoint("https://example.com/api1/collections/", conn, "other", "test")
+        _TAXIIEndpoint(fake_url, conn, "other", "test")
 
-    assert "A connection and user/password may not both be provided." in str(excinfo.value)
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, conn, auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, user="other", password="test", auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
+
+    with pytest.raises(InvalidArgumentsError) as excinfo:
+        _TAXIIEndpoint(fake_url, conn, "other", "test", auth=TokenAuth('abcd'))
+
+    assert error_str in str(excinfo.value)
 
 
 @responses.activate
@@ -747,7 +778,18 @@ def test_invalid_content_type_for_connection():
 
     assert ("Unexpected Response. Got Content-Type: 'application/vnd.oasis.taxii+json; "
             "version=2.0' for Accept: 'application/vnd.oasis.taxii+json; version=2.0; "
-            "charset=utf-8'") == str(excinfo.value)
+            "charset=utf-8'") in str(excinfo.value)
+
+
+@responses.activate
+def test_invalid_accept_for_connection():
+    responses.add(responses.GET, COLLECTION_URL, COLLECTIONS_RESPONSE,
+                  status=406, content_type=MEDIA_TYPE_TAXII_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        conn = _HTTPConnection(user="foo", password="bar", verify=False)
+        conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
+                 headers={"Accept": "application/taxii+json; version=2.1"})
 
 
 def test_status_missing_id_property(status_dict):
@@ -977,3 +1019,75 @@ def test_collection_missing_trailing_slash():
     response = collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     indicator = response["objects"][0]
     assert indicator["id"] == "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
+
+
+@responses.activate
+def test_get_objects_pagination_success(collection):
+    responses.add(responses.GET, GET_OBJECTS_URL, GET_OBJECTS_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+
+    response = collection.get_objects(per_request=50).json()
+    indicator = response["objects"][0]
+    assert len(response["objects"]) == 1
+    assert indicator["id"] == "indicator--252c7c11-daf2-42bd-843b-be65edca9f61"
+
+
+@responses.activate
+def test_get_objects_pagination_fail(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, GET_OBJECTS_URL, error,
+                  status=400, content_type=MEDIA_TYPE_STIX_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_objects(per_request=50).json()
+
+    assert e.value.response.status_code == 400
+
+
+@responses.activate
+def test_get_objects_pagination_fail_no_page(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, GET_OBJECTS_URL, error,
+                  status=400, content_type=MEDIA_TYPE_STIX_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_objects().json()
+
+    assert e.value.response.status_code == 400
+
+
+@responses.activate
+def test_get_manifests_pagination_success(collection):
+    responses.add(responses.GET, MANIFEST_URL, GET_MANIFEST_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V20)
+
+    response = collection.get_manifest(per_request=50).json()
+    assert len(response["objects"]) == 2
+    obj = response["objects"][0]
+    assert obj["id"] == "indicator--29aba82c-5393-42a8-9edb-6a2cb1df070b"
+    assert len(obj["versions"]) == 2
+    assert obj["media_types"][0] == MEDIA_TYPE_STIX_V20
+
+
+@responses.activate
+def test_get_manifests_pagination_fail(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, MANIFEST_URL, error,
+                  status=400, content_type=MEDIA_TYPE_TAXII_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_manifest(per_request=50).json()
+
+    assert e.value.response.status_code == 400
+
+
+@responses.activate
+def test_get_manifests_pagination_fail_no_page(collection):
+    error = ERROR_MESSAGE % "400"
+    responses.add(responses.GET, MANIFEST_URL, error,
+                  status=400, content_type=MEDIA_TYPE_TAXII_V20)
+
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        collection.get_manifest().json()
+
+    assert e.value.response.status_code == 400

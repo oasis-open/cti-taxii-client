@@ -1,13 +1,13 @@
 """Python TAXII 2.0 Client API"""
-
 from __future__ import unicode_literals
 
 import json
 import logging
 import time
 
+import requests.exceptions
 import six
-import six.moves.urllib.parse as urlparse
+from six.moves.urllib import parse as urlparse
 
 from .. import MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
 from ..common import (
@@ -18,24 +18,24 @@ from ..exceptions import AccessError, ValidationError
 
 # Module-level logger
 log = logging.getLogger(__name__)
-log.propagate = False
-
-formatter = logging.Formatter("[%(name)s] [%(levelname)s] [%(asctime)s] %(message)s")
-
-# Console Handler for taxii2client messages
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-log.addHandler(ch)
 
 
 def as_pages(func, start=0, per_request=0, *args, **kwargs):
-    """Creates a generator for TAXII 2.0 endpoints that support pagination."""
+    """Creates a generator for TAXII 2.0 endpoints that support pagination.
+        Args:
+            func (callable): A v20 function call that supports paged requests.
+                Currently Get Objects and Get Manifest.
+            start (int): The starting point for the page request. Default 0.
+            per_request (int): How many items per request. Default 0.
+
+    Use args or kwargs to pass filter information or other arguments required to make the call.
+    """
     resp = func(start=start, per_request=per_request, *args, **kwargs)
     yield _to_json(resp)
     total_obtained, total_available = _grab_total_items(resp)
 
-    if total_obtained != per_request:
-        log.warning("TAXII Server response with different amount of objects! Setting per_request=%s", total_obtained)
+    if total_available > per_request and total_obtained != per_request:
+        log.warning("TAXII Server Response with different amount of objects! Setting per_request=%s", total_obtained)
         per_request = total_obtained
 
     start += per_request
@@ -62,7 +62,7 @@ class Status(_TAXIIEndpoint):
     # aren't other endpoints to call on the Status object.
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, status_info=None):
+                 proxies=None, status_info=None, auth=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -79,7 +79,7 @@ class Status(_TAXIIEndpoint):
                 (optional)
 
         """
-        super(Status, self).__init__(url, conn, user, password, verify, proxies)
+        super(Status, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
         self.__raw = None
         if status_info:
             self._populate_fields(**status_info)
@@ -173,19 +173,19 @@ class Status(_TAXIIEndpoint):
             msg = "No 'pending_count' in Status for request '{}'"
             raise ValidationError(msg.format(self.url))
 
-        if len(self.successes) != self.success_count:
+        if self.successes and len(self.successes) != self.success_count:
             msg = "Found successes={}, but success_count={} in status '{}'"
             raise ValidationError(msg.format(self.successes,
                                              self.success_count,
                                              self.id))
 
-        if len(self.pendings) != self.pending_count:
+        if self.pendings and len(self.pendings) != self.pending_count:
             msg = "Found pendings={}, but pending_count={} in status '{}'"
             raise ValidationError(msg.format(self.pendings,
                                              self.pending_count,
                                              self.id))
 
-        if len(self.failures) != self.failure_count:
+        if self.failures and len(self.failures) != self.failure_count:
             msg = "Found failures={}, but failure_count={} in status '{}'"
             raise ValidationError(msg.format(self.failures,
                                              self.failure_count,
@@ -223,7 +223,7 @@ class Collection(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, collection_info=None):
+                 proxies=None, collection_info=None, auth=None):
         """
         Initialize a new Collection.  Either user/password or conn may be
         given, but not both.  The latter is intended for internal use, when
@@ -247,7 +247,7 @@ class Collection(_TAXIIEndpoint):
 
         """
 
-        super(Collection, self).__init__(url, conn, user, password, verify, proxies)
+        super(Collection, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
 
         self._loaded = False
         self.__raw = None
@@ -376,9 +376,19 @@ class Collection(_TAXIIEndpoint):
         headers = {"Accept": accept}
 
         if per_request > 0:
-            headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+            headers["Range"] = "items={}-{}".format(start, (start + per_request) - 1)
 
-        return self._conn.get(self.objects_url, headers=headers, params=query_params)
+        try:
+            response = self._conn.get(self.objects_url, headers=headers, params=query_params)
+        except requests.exceptions.HTTPError as e:
+            if per_request > 0:
+                # This is believed to be an error in TAXII 2.0
+                # http://docs.oasis-open.org/cti/taxii/v2.0/cs01/taxii-v2.0-cs01.html#_Toc496542716
+                headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+                response = self._conn.get(self.objects_url, headers=headers, params=query_params)
+            else:
+                raise e
+        return response
 
     def get_object(self, obj_id, version=None, accept=MEDIA_TYPE_STIX_V20):
         """Implement the ``Get an Object`` endpoint (section 5.5)"""
@@ -467,15 +477,26 @@ class Collection(_TAXIIEndpoint):
         return status
 
     def get_manifest(self, accept=MEDIA_TYPE_TAXII_V20, start=0, per_request=0, **filter_kwargs):
-        """Implement the ``Get Object Manifests`` endpoint (section 5.6). For pagination requests use ``as_pages`` method."""
+        """Implement the ``Get Object Manifests`` endpoint (section 5.6).
+        For pagination requests use ``as_pages`` method."""
         self._verify_can_read()
         query_params = _filter_kwargs_to_query_params(filter_kwargs)
         headers = {"Accept": accept}
 
         if per_request > 0:
-            headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+            headers["Range"] = "items={}-{}".format(start, (start + per_request) - 1)
 
-        return self._conn.get(self.manifest_url, headers=headers, params=query_params)
+        try:
+            response = self._conn.get(self.manifest_url, headers=headers, params=query_params)
+        except requests.exceptions.HTTPError as e:
+            if per_request > 0:
+                # This is believed to be an error in TAXII 2.0
+                # http://docs.oasis-open.org/cti/taxii/v2.0/cs01/taxii-v2.0-cs01.html#_Toc496542716
+                headers["Range"] = "items {}-{}".format(start, (start + per_request) - 1)
+                response = self._conn.get(self.manifest_url, headers=headers, params=query_params)
+            else:
+                raise e
+        return response
 
 
 class ApiRoot(_TAXIIEndpoint):
@@ -496,7 +517,7 @@ class ApiRoot(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None):
+                 proxies=None, auth=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -510,7 +531,7 @@ class ApiRoot(_TAXIIEndpoint):
                 (optional)
 
         """
-        super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies)
+        super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
 
         self._loaded_collections = False
         self._loaded_information = False
@@ -639,7 +660,7 @@ class Server(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None):
+                 proxies=None, auth=None):
         """Create a server discovery endpoint.
 
         Args:
@@ -653,7 +674,7 @@ class Server(_TAXIIEndpoint):
                 (optional)
 
         """
-        super(Server, self).__init__(url, conn, user, password, verify, proxies)
+        super(Server, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
 
         self._user = user
         self._password = password
@@ -661,6 +682,7 @@ class Server(_TAXIIEndpoint):
         self._proxies = proxies
         self._loaded = False
         self.__raw = None
+        self._auth = auth
 
     @property
     def title(self):
@@ -719,7 +741,8 @@ class Server(_TAXIIEndpoint):
                                    user=self._user,
                                    password=self._password,
                                    verify=self._verify,
-                                   proxies=self._proxies)
+                                   proxies=self._proxies,
+                                   auth=self._auth)
                            for url in roots]
         # If 'default' is one of the existing API Roots, reuse that object
         # rather than creating a duplicate. The TAXII 2.0 spec says that the

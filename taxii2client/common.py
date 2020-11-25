@@ -1,4 +1,5 @@
 import datetime
+import logging
 import re
 
 import pytz
@@ -11,6 +12,9 @@ from . import DEFAULT_USER_AGENT, MEDIA_TYPE_TAXII_V20, MEDIA_TYPE_TAXII_V21
 from .exceptions import (
     InvalidArgumentsError, InvalidJSONError, TAXIIServiceException
 )
+
+# Module-level logger
+log = logging.getLogger(__name__)
 
 
 def _format_datetime(dttm):
@@ -131,10 +135,22 @@ def _grab_total_items(resp):
     try:
         results = re.match(r"^items (\d+)-(\d+)/(\d+)$", resp.headers["Content-Range"])
         return int(results.group(2)) - int(results.group(1)) + 1, int(results.group(3))
-    except ValueError as e:
+    except (ValueError, IndexError) as e:
         six.raise_from(InvalidJSONError(
             "Invalid Content-Range was received from " + resp.request.url
         ), e)
+    except KeyError:
+        log.warning("TAXII Server Response did not include 'Content-Range' header - results could be incomplete")
+        return 0, 0
+
+
+class TokenAuth(requests.auth.AuthBase):
+    def __init__(self, key):
+        self.key = key
+
+    def __call__(self, r):
+        r.headers['Authorization'] = 'Token {}'.format(self.key)
+        return r
 
 
 class _TAXIIEndpoint(object):
@@ -145,7 +161,7 @@ class _TAXIIEndpoint(object):
 
     """
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, version="2.0"):
+                 proxies=None, version="2.0", auth=None):
         """Create a TAXII endpoint.
 
         Args:
@@ -158,13 +174,13 @@ class _TAXIIEndpoint(object):
             version (str): The spec version this connection is meant to follow.
 
         """
-        if conn and (user or password):
-            raise InvalidArgumentsError("A connection and user/password may"
-                                        " not both be provided.")
+        if (conn and ((user or password) or auth)) or ((user or password) and auth):
+            raise InvalidArgumentsError("Only one of a connection, username/password, or auth object may"
+                                        " be provided.")
         elif conn:
             self._conn = conn
         else:
-            self._conn = _HTTPConnection(user, password, verify, proxies, version=version)
+            self._conn = _HTTPConnection(user, password, verify, proxies, version=version, auth=auth)
 
         # Add trailing slash to TAXII endpoint if missing
         # https://github.com/oasis-open/cti-taxii-client/issues/50
@@ -201,7 +217,7 @@ class _HTTPConnection(object):
     """
 
     def __init__(self, user=None, password=None, verify=True, proxies=None,
-                 user_agent=DEFAULT_USER_AGENT, version="2.0"):
+                 user_agent=DEFAULT_USER_AGENT, version="2.0", auth=None):
         """Create a connection session.
 
         Args:
@@ -219,8 +235,12 @@ class _HTTPConnection(object):
         self.session.verify = verify
         # enforce that we always have a connection-default user agent.
         self.user_agent = user_agent or DEFAULT_USER_AGENT
+
         if user and password:
             self.session.auth = requests.auth.HTTPBasicAuth(user, password)
+        elif auth:
+            self.session.auth = auth
+
         if proxies:
             self.session.proxies.update(proxies)
         self.version = version
@@ -275,12 +295,26 @@ class _HTTPConnection(object):
 
         resp = self.session.get(url, headers=merged_headers, params=params)
 
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if resp.status_code == 406:
+                # Provide more details about this error since its usually an import problem.
+                # Import the correct version of the TAXII Client.
+                logging.error(
+                    "Server Response: 406 Client Error "
+                    "If you are trying to contact a TAXII 2.0 Server use 'from taxii2client.v20 import X'. "
+                    "If you are trying to contact a TAXII 2.1 Server use 'from taxii2client.v21 import X'"
+                )
+            raise e
 
         content_type = resp.headers["Content-Type"]
-
         if not self.valid_content_type(content_type=content_type, accept=accept):
-            msg = "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'"
+            msg = (
+                "Unexpected Response. Got Content-Type: '{}' for Accept: '{}'\n"
+                "If you are trying to contact a TAXII 2.0 Server use 'from taxii2client.v20 import X'\n"
+                "If you are trying to contact a TAXII 2.1 Server use 'from taxii2client.v21 import X'"
+            )
             raise TAXIIServiceException(msg.format(content_type, accept))
 
         if "Range" in merged_headers and self.version == "2.0":
