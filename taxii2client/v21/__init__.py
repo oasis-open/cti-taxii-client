@@ -25,7 +25,7 @@ class Status(_TAXIIEndpoint):
     # aren't other endpoints to call on the Status object.
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, status_info=None, auth=None):
+                 proxies=None, status_info=None, auth=None, cert=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -40,9 +40,12 @@ class Status(_TAXIIEndpoint):
             verify (bool): validate the entity credentials. (default: True)
             proxies (dict): key/value pair for http/https proxy settings.
                 (optional)
+            cert (str or tuple): SSL client certificate default, if String,
+                path to ssl client cert file (.pem). If Tuple, (‘cert’, ‘key’)
+                pair. (optional)
 
         """
-        super(Status, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth)
+        super(Status, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth, cert=cert)
         self.__raw = None
         if status_info:
             self._populate_fields(**status_info)
@@ -185,7 +188,7 @@ class Collection(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, collection_info=None, auth=None):
+                 proxies=None, collection_info=None, auth=None, cert=None):
         """
         Initialize a new Collection.  Either user/password or conn may be
         given, but not both.  The latter is intended for internal use, when
@@ -206,10 +209,13 @@ class Collection(_TAXIIEndpoint):
             verify (bool): validate the entity credentials. (default: True)
             proxies (dict): key/value pair for http/https proxy settings.
                 (optional)
+            cert (str or tuple): SSL client certificate default, if String,
+                path to ssl client cert file (.pem). If Tuple, (‘cert’, ‘key’)
+                pair. (optional)
 
         """
 
-        super(Collection, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth)
+        super(Collection, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth, cert=cert)
 
         self._loaded = False
         self.__raw = None
@@ -460,7 +466,7 @@ class ApiRoot(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, auth=None):
+                 proxies=None, auth=None, cert=None):
         """Create an API root resource endpoint.
 
         Args:
@@ -472,9 +478,12 @@ class ApiRoot(_TAXIIEndpoint):
             verify (bool): validate the entity credentials. (default: True)
             proxies (dict): key/value pair for http/https proxy settings.
                 (optional)
+            cert (str or tuple): SSL client certificate default, if String,
+                path to ssl client cert file (.pem). If Tuple, (‘cert’, ‘key’)
+                pair. (optional)
 
         """
-        super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth)
+        super(ApiRoot, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth, cert=cert)
 
         self._loaded_collections = False
         self._loaded_information = False
@@ -603,7 +612,7 @@ class Server(_TAXIIEndpoint):
     """
 
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, auth=None):
+                 proxies=None, auth=None, cert=None):
         """Create a server discovery endpoint.
 
         Args:
@@ -615,9 +624,13 @@ class Server(_TAXIIEndpoint):
             verify (bool): validate the entity credentials. (default: True)
             proxies (dict): key/value pair for http/https proxy settings.
                 (optional)
+            cert (str or tuple): SSL client certificate default, if String,
+                path to ssl client cert file (.pem). If Tuple, (‘cert’, ‘key’)
+                pair. (optional)
 
         """
-        super(Server, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth)
+        super(Server, self).__init__(url, conn, user, password, verify, proxies, "2.1",
+                                     auth=auth, cert=cert)
 
         self._user = user
         self._password = password
@@ -626,6 +639,7 @@ class Server(_TAXIIEndpoint):
         self._loaded = False
         self.__raw = None
         self._auth = auth
+        self._cert = cert
 
     @property
     def title(self):
