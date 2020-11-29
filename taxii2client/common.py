@@ -161,7 +161,7 @@ class _TAXIIEndpoint(object):
 
     """
     def __init__(self, url, conn=None, user=None, password=None, verify=True,
-                 proxies=None, version="2.0", auth=None):
+                 proxies=None, version="2.0", auth=None, cert=None):
         """Create a TAXII endpoint.
 
         Args:
@@ -172,6 +172,9 @@ class _TAXIIEndpoint(object):
             proxies (dict): key/value pair for http/https proxy settings.
                 (optional)
             version (str): The spec version this connection is meant to follow.
+            cert (str or tuple): SSL client certificate default, if String,
+                path to ssl client cert file (.pem). If Tuple, (‘cert’, ‘key’)
+                pair. (optional)
 
         """
         if (conn and ((user or password) or auth)) or ((user or password) and auth):
@@ -180,7 +183,7 @@ class _TAXIIEndpoint(object):
         elif conn:
             self._conn = conn
         else:
-            self._conn = _HTTPConnection(user, password, verify, proxies, version=version, auth=auth)
+            self._conn = _HTTPConnection(user, password, verify, proxies, version=version, auth=auth, cert=cert)
 
         # Add trailing slash to TAXII endpoint if missing
         # https://github.com/oasis-open/cti-taxii-client/issues/50
@@ -217,7 +220,8 @@ class _HTTPConnection(object):
     """
 
     def __init__(self, user=None, password=None, verify=True, proxies=None,
-                 user_agent=DEFAULT_USER_AGENT, version="2.0", auth=None):
+                 user_agent=DEFAULT_USER_AGENT, version="2.0", auth=None,
+                 cert=None):
         """Create a connection session.
 
         Args:
@@ -230,6 +234,9 @@ class _HTTPConnection(object):
                 requests.  If not given, use a default value which represents
                 this library.
             version (str): The spec version this connection is meant to follow.
+            cert (str or tuple): SSL client certificate default, if String,
+                path to ssl client cert file (.pem). If Tuple, (‘cert’, ‘key’)
+                pair. (optional)
         """
         self.session = requests.Session()
         self.session.verify = verify
@@ -244,7 +251,8 @@ class _HTTPConnection(object):
         if proxies:
             self.session.proxies.update(proxies)
         self.version = version
-
+        if cert:
+            self.session.cert = cert
     def valid_content_type(self, content_type, accept):
         """Check that the server is returning a valid Content-Type
 
