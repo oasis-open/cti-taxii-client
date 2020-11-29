@@ -253,6 +253,7 @@ class _HTTPConnection(object):
         self.version = version
         if cert:
             self.session.cert = cert
+
     def valid_content_type(self, content_type, accept):
         """Check that the server is returning a valid Content-Type
 
