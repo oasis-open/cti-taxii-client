@@ -700,7 +700,8 @@ class Server(_TAXIIEndpoint):
                     password=self._password,
                     verify=self._verify,
                     proxies=self._proxies,
-                    auth=self._auth)
+                    auth=self._auth,
+                    cert=self._cert)
             for url in roots
         ]
         # If 'default' is one of the existing API Roots, reuse that object
