@@ -19,4 +19,3 @@ repos:
         args: ["-c", "--diff"]
     -   id: isort
         name: Sort python imports (fixes files)
-
