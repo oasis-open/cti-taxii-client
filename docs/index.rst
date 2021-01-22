@@ -21,13 +21,14 @@ currently supports the current services:
 - Get Object Manifests
 - Get Object Versions (2.1 only)
 
-API Reference
-=============
+Table of Contents
+=================
 
 .. toctree::
    :maxdepth: 3
 
-   api/api_reference
+   api/taxii2client
+   contributing
 
 Indices and tables
 ==================
