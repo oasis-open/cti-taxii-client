@@ -9,7 +9,10 @@ import six
 from six.moves.urllib import parse as urlparse
 
 from .. import MEDIA_TYPE_TAXII_V21
-from ..common import _filter_kwargs_to_query_params, _TAXIIEndpoint, _to_json
+from ..common import (
+    _filter_kwargs_to_query_params, _grab_total_items_from_resource,
+    _TAXIIEndpoint, _to_json
+)
 from ..exceptions import AccessError, ValidationError
 
 # Module-level logger
@@ -29,10 +32,10 @@ def as_pages(func, per_request=0, *args, **kwargs):
     envelope = func(limit=per_request, *args, **kwargs)
     yield _to_json(envelope)
 
-    len_objects = len(envelope.get("objects", []))
-    if envelope.get("more", False) and len_objects != per_request:
-        log.warning("TAXII Server Response with different amount of objects! Setting limit=%s", len_objects)
-        per_request = len_objects
+    total_obtained = _grab_total_items_from_resource(envelope)
+    if envelope.get("more", False) and total_obtained != per_request:
+        log.warning("TAXII Server Response with different amount of objects! Setting limit=%s", total_obtained)
+        per_request = total_obtained
 
     # The while loop will not be executed if the response is received in full.
     while envelope.get("more", False):
