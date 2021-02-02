@@ -22,11 +22,12 @@ log = logging.getLogger(__name__)
 
 def as_pages(func, start=0, per_request=0, *args, **kwargs):
     """Creates a generator for TAXII 2.0 endpoints that support pagination.
-        Args:
-            func (callable): A v20 function that supports paged requests.
-                Currently Get Objects and Get Manifest.
-            start (int): The starting point for the page request. Default 0.
-            per_request (int): How many items per request. Default 0.
+
+    Args:
+        func (callable): A v20 function call that supports paged requests.
+            Currently Get Objects and Get Manifest.
+        start (int): The starting point for the page request. Default 0.
+        per_request (int): How many items per request. Default 0.
 
     Use args or kwargs to pass filter information or other arguments required to make the call.
     """
