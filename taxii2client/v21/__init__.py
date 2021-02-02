@@ -16,26 +16,27 @@ from ..exceptions import AccessError, ValidationError
 log = logging.getLogger(__name__)
 
 
-def as_pages(func, limit=0, *args, **kwargs):
+def as_pages(func, per_request=0, *args, **kwargs):
     """Creates a generator for TAXII 2.1 endpoints that support pagination.
-        Args:
-            func (callable): A v21 function that supports paged requests.
-                Currently Get Objects and Get Manifest.
-            limit (int): How many items per request. Default 0.
+
+    Args:
+        func (callable): A v21 function that supports paged requests.
+            Currently Get Objects and Get Manifest.
+        per_request (int): How many items per request. Default 0.
 
     Use args or kwargs to pass filter information or other arguments required to make the call.
     """
-    envelope = func(limit=limit, *args, **kwargs)
+    envelope = func(limit=per_request, *args, **kwargs)
     yield _to_json(envelope)
 
     len_objects = len(envelope.get("objects", []))
-    if envelope.get("more", False) and len_objects != limit:
-        log.warning("TAXII Server Response with different amount of objects! Setting per_request=%s", len_objects)
-        limit = len_objects
+    if envelope.get("more", False) and len_objects != per_request:
+        log.warning("TAXII Server Response with different amount of objects! Setting limit=%s", len_objects)
+        per_request = len_objects
 
     # The while loop will not be executed if the response is received in full.
     while envelope.get("more", False):
-        envelope = func(limit=limit, next=envelope.get("next", ""), *args, **kwargs)
+        envelope = func(limit=per_request, next=envelope.get("next", ""), *args, **kwargs)
         yield _to_json(envelope)
 
 

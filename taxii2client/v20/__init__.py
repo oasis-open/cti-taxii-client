@@ -35,7 +35,7 @@ def as_pages(func, start=0, per_request=0, *args, **kwargs):
     yield _to_json(resp)
     total_obtained, total_available = _grab_total_items(resp)
 
-    if total_available > per_request and total_obtained != per_request:
+    if total_available > per_request and total_obtained != per_request and total_obtained != float("inf"):
         log.warning("TAXII Server Response with different amount of objects! Setting per_request=%s", total_obtained)
         per_request = total_obtained
 
@@ -46,7 +46,6 @@ def as_pages(func, start=0, per_request=0, *args, **kwargs):
         yield _to_json(resp)
 
         total_in_request, total_available = _grab_total_items(resp)
-        total_obtained += total_in_request
         start += per_request
 
 
@@ -365,8 +364,10 @@ class Collection(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update Collection information"""
-        response = self.__raw = self._conn.get(self.url,
-                                               headers={"Accept": accept})
+        response = self.__raw = self._conn.get(
+            self.url,
+            headers={"Accept": accept}
+        )
         self._populate_fields(**response)
         self._loaded = True
 
