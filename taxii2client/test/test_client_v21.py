@@ -666,7 +666,7 @@ def test_content_type_invalid(collection):
     with pytest.raises(TAXIIServiceException) as excinfo:
         collection.get_object("indicator--252c7c11-daf2-42bd-843b-be65edca9f61")
     assert ("Unexpected Response. Got Content-Type: 'taxii' for "
-            "Accept: 'application/taxii+json; version=2.1'") in str(excinfo.value)
+            "Accept: 'application/taxii+json;version=2.1'") in str(excinfo.value)
 
 
 def test_url_filter_type():
@@ -782,8 +782,8 @@ def test_invalid_content_type_for_connection():
         conn.get("https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116/",
                  headers={"Accept": MEDIA_TYPE_TAXII_V21 + "; charset=utf-8"})
 
-    assert ("Unexpected Response. Got Content-Type: 'application/taxii+json; "
-            "version=2.1' for Accept: 'application/taxii+json; version=2.1; "
+    assert ("Unexpected Response. Got Content-Type: 'application/taxii+json;"
+            "version=2.1' for Accept: 'application/taxii+json;version=2.1; "
             "charset=utf-8'") in str(excinfo.value)
 
 
