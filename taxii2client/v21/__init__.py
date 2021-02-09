@@ -629,8 +629,7 @@ class Server(_TAXIIEndpoint):
                 pair. (optional)
 
         """
-        super(Server, self).__init__(url, conn, user, password, verify, proxies, "2.1",
-                                     auth=auth, cert=cert)
+        super(Server, self).__init__(url, conn, user, password, verify, proxies, "2.1", auth=auth, cert=cert)
 
         self._user = user
         self._password = password

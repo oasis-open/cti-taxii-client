@@ -687,7 +687,7 @@ class Server(_TAXIIEndpoint):
                 pair. (optional)
 
         """
-        super(Server, self).__init__(url, conn, user, password, verify, proxies, auth=auth)
+        super(Server, self).__init__(url, conn, user, password, verify, proxies, auth=auth, cert=cert)
 
         self._user = user
         self._password = password
@@ -696,6 +696,7 @@ class Server(_TAXIIEndpoint):
         self._loaded = False
         self.__raw = None
         self._auth = auth
+        self._cert = cert
 
     @property
     def title(self):
