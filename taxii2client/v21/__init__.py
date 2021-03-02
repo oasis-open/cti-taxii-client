@@ -11,7 +11,7 @@ from six.moves.urllib import parse as urlparse
 from .. import MEDIA_TYPE_TAXII_V21
 from ..common import (
     _filter_kwargs_to_query_params, _grab_total_items_from_resource,
-    _TAXIIEndpoint, _to_json
+    _TAXIIEndpoint
 )
 from ..exceptions import AccessError, ValidationError
 
@@ -30,7 +30,7 @@ def as_pages(func, per_request=0, *args, **kwargs):
     Use args or kwargs to pass filter information or other arguments required to make the call.
     """
     envelope = func(limit=per_request, *args, **kwargs)
-    yield _to_json(envelope)
+    yield envelope
 
     total_obtained = _grab_total_items_from_resource(envelope)
     if envelope.get("more", False) and total_obtained != per_request:
@@ -40,7 +40,7 @@ def as_pages(func, per_request=0, *args, **kwargs):
     # The while loop will not be executed if the response is received in full.
     while envelope.get("more", False):
         envelope = func(limit=per_request, next=envelope.get("next", ""), *args, **kwargs)
-        yield _to_json(envelope)
+        yield envelope
 
 
 class Status(_TAXIIEndpoint):

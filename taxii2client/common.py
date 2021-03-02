@@ -117,7 +117,7 @@ def _to_json(resp):
     Factors out some JSON parse code with error handling, to hopefully improve
     error messages.
 
-    :param resp: A "requests" library response
+    :param resp: A requests.Response instance
     :return: Parsed JSON.
     :raises: InvalidJSONError If JSON parsing failed.
     """
@@ -132,7 +132,8 @@ def _to_json(resp):
 
 def _grab_total_items_from_resource(resp):
     """Returns number of objects in bundle/envelope"""
-    resp = _to_json(resp)
+    if isinstance(resp, requests.Response):
+        resp = _to_json(resp)
     return len(resp.get("objects", []))
 
 
