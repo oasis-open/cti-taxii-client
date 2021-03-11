@@ -134,8 +134,8 @@ A ``Collection`` can also be instantiated directly:
     for envelope in as_pages(collection.get_objects, per_request=50):
         print(envelope)
 
-    for envelope in as_pages(collection.get_manifest, per_request=50):
-        print(envelope)
+    for manifest_resource in as_pages(collection.get_manifest, per_request=50):
+        print(manifest_resource)
 
 In addition to the object-specific properties and methods, all classes have a
 ``refresh()`` method that reloads the URL corresponding to that resource, to
