@@ -104,13 +104,14 @@ A ``Collection`` can also be instantiated directly:
     from taxii2client.v20 import Collection, as_pages
 
     collection = Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
-    collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+    print(collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61'))
 
     # For normal (no pagination) requests
-    collection.get_objects()
-    collection.get_manifest()
+    print(collection.get_objects())
+    print(collection.get_manifest())
 
     # For pagination requests.
+    # Use *args for other arguments to the call and **kwargs to pass filter information
     for bundle in as_pages(collection.get_objects, per_request=50):
         print(bundle)
 
@@ -119,23 +120,22 @@ A ``Collection`` can also be instantiated directly:
 
     # ---------------------------------------------------------------- #
     # Performing TAXII 2.1 Requests
-    from taxii2client.v21 import Collection
+    from taxii2client.v21 import Collection, as_pages
 
     collection = Collection('https://example.com/api1/collections/91a7b528-80eb-42ed-a74d-c6fbd5a26116')
-    collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61')
+    print(collection.get_object('indicator--252c7c11-daf2-42bd-843b-be65edca9f61'))
 
     # For normal (no pagination) requests
-    collection.get_objects()
-    collection.get_manifest()
+    print(collection.get_objects())
+    print(collection.get_manifest())
 
     # For pagination requests.
-    envelope = collection.get_objects(limit=50)
-    while envelope.get("more", False):
-        envelope = collection.get_objects(limit=50, next=envelope.get("next", ""))
+    # Use *args for other arguments to the call and **kwargs to pass filter information
+    for envelope in as_pages(collection.get_objects, per_request=50):
+        print(envelope)
 
-    envelope = collection.get_manifest(limit=50)
-    while envelope.get("more", False):
-        envelope = collection.get_manifest(limit=50, next=envelope.get("next", ""))
+    for envelope in as_pages(collection.get_manifest, per_request=50):
+        print(envelope)
 
 In addition to the object-specific properties and methods, all classes have a
 ``refresh()`` method that reloads the URL corresponding to that resource, to

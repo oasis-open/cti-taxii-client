@@ -1,6 +1,5 @@
 import datetime
 import logging
-import re
 
 import pytz
 import requests
@@ -135,33 +134,6 @@ def _grab_total_items_from_resource(resp):
     if isinstance(resp, requests.Response):
         resp = _to_json(resp)
     return len(resp.get("objects", []))
-
-
-def _grab_total_items(resp):
-    """Extracts the total elements (from HTTP Header) available on the Endpoint making the request"""
-    try:
-        results = re.match(r"^items (\d+)-(\d+)/(\d+)$", resp.headers["Content-Range"])
-        if results:
-            return int(results.group(2)) - int(results.group(1)) + 1, int(results.group(3))
-
-        results = re.match(r"^items (\d+)-(\d+)/\*$", resp.headers["Content-Range"])
-        if results:
-            return int(results.group(2)) - int(results.group(1)) + 1, float("inf")
-
-        results = re.match(r"^items \*/\*$", resp.headers["Content-Range"])
-        if results:
-            return float("inf"), float("inf")
-
-        results = re.match(r"^items \*/(\d+)$", resp.headers["Content-Range"])
-        if results:
-            return float("inf"), int(results.group(1))
-    except (ValueError, IndexError) as e:
-        six.raise_from(InvalidJSONError(
-            "Invalid Content-Range was received from " + resp.request.url
-        ), e)
-    except KeyError:
-        log.warning("TAXII Server Response did not include 'Content-Range' header - results could be incomplete.")
-    return _grab_total_items_from_resource(resp), float("inf")
 
 
 class TokenAuth(requests.auth.AuthBase):
