@@ -1,3 +1,11 @@
+Version 2.3.0
+2021-03-12
+- #95 Remove extra whitespace in Content-Type header (@2xyo)
+- #94 Pagination changes to support more of the header combinations used in TAXII 2.0 (RFC7233). Provide similar as_pages method for v21 paginated call.
+- #93 Fixes to ReadTheDocs not rendering Reference API documentation
+- #91 Transitioned test suite from TravisCI to GitHub Workflows
+- #89 Expose the `cert` parameter to all API classes in v20 and v21
+
 Version 2.2.2
 2020-09-10
 - #85 Provide more details when a Server Response status code is 406. (v20, v21)
