@@ -1,6 +1,5 @@
 import datetime
 import logging
-import re
 
 import pytz
 import requests
@@ -117,7 +116,7 @@ def _to_json(resp):
     Factors out some JSON parse code with error handling, to hopefully improve
     error messages.
 
-    :param resp: A "requests" library response
+    :param resp: A requests.Response instance
     :return: Parsed JSON.
     :raises: InvalidJSONError If JSON parsing failed.
     """
@@ -130,18 +129,11 @@ def _to_json(resp):
         ), e)
 
 
-def _grab_total_items(resp):
-    """Extracts the Total elements available on the Endpoint making the request"""
-    try:
-        results = re.match(r"^items (\d+)-(\d+)/(\d+)$", resp.headers["Content-Range"])
-        return int(results.group(2)) - int(results.group(1)) + 1, int(results.group(3))
-    except (ValueError, IndexError) as e:
-        six.raise_from(InvalidJSONError(
-            "Invalid Content-Range was received from " + resp.request.url
-        ), e)
-    except KeyError:
-        log.warning("TAXII Server Response did not include 'Content-Range' header - results could be incomplete")
-        return 0, 0
+def _grab_total_items_from_resource(resp):
+    """Returns number of objects in bundle/envelope"""
+    if isinstance(resp, requests.Response):
+        resp = _to_json(resp)
+    return len(resp.get("objects", []))
 
 
 class TokenAuth(requests.auth.AuthBase):

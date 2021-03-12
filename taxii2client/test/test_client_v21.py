@@ -14,7 +14,7 @@ from taxii2client.exceptions import (
     AccessError, InvalidArgumentsError, InvalidJSONError,
     TAXIIServiceException, ValidationError
 )
-from taxii2client.v21 import ApiRoot, Collection, Server, Status
+from taxii2client.v21 import ApiRoot, Collection, Server, Status, as_pages
 
 MEDIA_TYPE_STIX_V21 = "application/stix+json;version=2.1"
 TAXII_SERVER = "example.com"
@@ -97,22 +97,26 @@ WRITABLE_COLLECTION = """{
     ]
 }"""
 
+STIX_OBJECT = """
+{
+    "type": "indicator",
+    "id": "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
+    "spec_version": "2.1",
+    "created": "2016-04-06T20:03:48.000Z",
+    "modified": "2016-04-06T20:03:48.000Z",
+    "pattern": "[ file:hashes.MD5 = 'd41d8cd98f00b204e9800998ecf8427e' ]",
+    "pattern_type": "stix",
+    "valid_from": "2016-01-01T00:00:00Z"
+}
+"""
+
 # This bundle is used as the response to get_objects(), and also the bundle
 # POST'ed with add_objects().
-STIX_ENVELOPE = """{
+STIX_ENVELOPE = f"""{{
     "objects": [
-        {
-            "type": "indicator",
-            "id": "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
-            "spec_version": "2.1",
-            "created": "2016-04-06T20:03:48.000Z",
-            "modified": "2016-04-06T20:03:48.000Z",
-            "pattern": "[ file:hashes.MD5 = 'd41d8cd98f00b204e9800998ecf8427e' ]",
-            "pattern_type": "stix",
-            "valid_from": "2016-01-01T00:00:00Z"
-        }
+        {STIX_OBJECT}
     ]
-}"""
+}}"""
 GET_OBJECTS_RESPONSE = STIX_ENVELOPE
 # get_object() still returns a bundle. In this case, the bundle has only one
 # object (the correct one.)
@@ -505,6 +509,37 @@ def test_get_collection_objects(collection):
 
     response = collection.get_objects()
     assert len(response["objects"]) == 1
+
+
+@responses.activate
+def test_get_collection_objects_paged_1(collection):
+    responses.add(responses.GET, GET_OBJECTS_URL, GET_OBJECTS_RESPONSE,
+                  status=200, content_type=MEDIA_TYPE_TAXII_V21)
+    response = []
+
+    for bundle in as_pages(collection.get_objects, per_request=50):
+        response.extend(bundle.get("objects", []))
+
+    assert len(response) == 1
+
+
+@responses.activate
+def test_get_collection_objects_paged_2(collection):
+    obj_return = []
+    for x in range(0, 50):
+        obj_return.append(json.loads(STIX_OBJECT))
+
+    responses.add(responses.GET, GET_OBJECTS_URL, json.dumps({"more": True, "objects": obj_return[:25]}),
+                  status=200, content_type=MEDIA_TYPE_TAXII_V21)
+
+    responses.add(responses.GET, GET_OBJECTS_URL, json.dumps({"more": False, "objects": obj_return[25:]}),
+                  status=200, content_type=MEDIA_TYPE_TAXII_V21)
+
+    response = []
+    for bundle in as_pages(collection.get_objects, per_request=25):
+        response.extend(bundle.get("objects", []))
+
+    assert len(response) == 50
 
 
 @responses.activate

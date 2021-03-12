@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import json
 import logging
+import re
 import time
 
 import requests.exceptions
@@ -11,10 +12,10 @@ from six.moves.urllib import parse as urlparse
 
 from .. import MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
 from ..common import (
-    _filter_kwargs_to_query_params, _grab_total_items, _TAXIIEndpoint,
-    _to_json
+    _filter_kwargs_to_query_params, _grab_total_items_from_resource,
+    _TAXIIEndpoint, _to_json
 )
-from ..exceptions import AccessError, ValidationError
+from ..exceptions import AccessError, InvalidJSONError, ValidationError
 
 # Module-level logger
 log = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def as_pages(func, start=0, per_request=0, *args, **kwargs):
     yield _to_json(resp)
     total_obtained, total_available = _grab_total_items(resp)
 
-    if total_available > per_request and total_obtained != per_request:
+    if total_available > per_request and total_obtained != per_request and total_obtained != float("inf"):
         log.warning("TAXII Server Response with different amount of objects! Setting per_request=%s", total_obtained)
         per_request = total_obtained
 
@@ -46,8 +47,35 @@ def as_pages(func, start=0, per_request=0, *args, **kwargs):
         yield _to_json(resp)
 
         total_in_request, total_available = _grab_total_items(resp)
-        total_obtained += total_in_request
         start += per_request
+
+
+def _grab_total_items(resp):
+    """Extracts the total elements (from HTTP Header) available on the Endpoint making the request.
+    This is specific to TAXII 2.0"""
+    try:
+        results = re.match(r"^items (\d+)-(\d+)/(\d+)$", resp.headers["Content-Range"])
+        if results:
+            return int(results.group(2)) - int(results.group(1)) + 1, int(results.group(3))
+
+        results = re.match(r"^items (\d+)-(\d+)/\*$", resp.headers["Content-Range"])
+        if results:
+            return int(results.group(2)) - int(results.group(1)) + 1, float("inf")
+
+        results = re.match(r"^items \*/\*$", resp.headers["Content-Range"])
+        if results:
+            return float("inf"), float("inf")
+
+        results = re.match(r"^items \*/(\d+)$", resp.headers["Content-Range"])
+        if results:
+            return float("inf"), int(results.group(1))
+    except (ValueError, IndexError) as e:
+        six.raise_from(InvalidJSONError(
+            "Invalid Content-Range was received from " + resp.request.url
+        ), e)
+    except KeyError:
+        log.warning("TAXII Server Response did not include 'Content-Range' header - results could be incomplete.")
+    return _grab_total_items_from_resource(resp), float("inf")
 
 
 class Status(_TAXIIEndpoint):
@@ -371,8 +399,10 @@ class Collection(_TAXIIEndpoint):
 
     def refresh(self, accept=MEDIA_TYPE_TAXII_V20):
         """Update Collection information"""
-        response = self.__raw = self._conn.get(self.url,
-                                               headers={"Accept": accept})
+        response = self.__raw = self._conn.get(
+            self.url,
+            headers={"Accept": accept}
+        )
         self._populate_fields(**response)
         self._loaded = True
 

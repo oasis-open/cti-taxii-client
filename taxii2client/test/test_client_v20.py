@@ -16,7 +16,7 @@ from taxii2client.exceptions import (
     AccessError, InvalidArgumentsError, InvalidJSONError,
     TAXIIServiceException, ValidationError
 )
-from taxii2client.v20 import ApiRoot, Collection, Server, Status
+from taxii2client.v20 import ApiRoot, Collection, Server, Status, as_pages
 
 TAXII_SERVER = "example.com"
 DISCOVERY_URL = "https://{}/taxii/".format(TAXII_SERVER)
@@ -98,23 +98,29 @@ WRITABLE_COLLECTION = """{
   ]
 }"""
 
+
+STIX_OBJECT = """
+{
+  "type": "indicator",
+  "id": "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
+  "created": "2016-04-06T20:03:48.000Z",
+  "modified": "2016-04-06T20:03:48.000Z",
+  "pattern": "[ file:hashes.MD5 = 'd41d8cd98f00b204e9800998ecf8427e' ]",
+  "valid_from": "2016-01-01T00:00:00Z"
+}
+"""
+
+
 # This bundle is used as the response to get_objects(), and also the bundle
 # POST'ed with add_objects().
-STIX_BUNDLE = """{
+STIX_BUNDLE = f"""{{
   "type": "bundle",
   "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
   "spec_version": "2.0",
   "objects": [
-    {
-      "type": "indicator",
-      "id": "indicator--252c7c11-daf2-42bd-843b-be65edca9f61",
-      "created": "2016-04-06T20:03:48.000Z",
-      "modified": "2016-04-06T20:03:48.000Z",
-      "pattern": "[ file:hashes.MD5 = 'd41d8cd98f00b204e9800998ecf8427e' ]",
-      "valid_from": "2016-01-01T00:00:00Z"
-    }
+    {STIX_OBJECT}
   ]
-}"""
+}}"""
 GET_OBJECTS_RESPONSE = STIX_BUNDLE
 # get_object() still returns a bundle. In this case, the bundle has only one
 # object (the correct one.)
@@ -487,6 +493,233 @@ def test_collection(collection):
 def test_collection_unexpected_kwarg():
     with pytest.raises(TypeError):
         Collection(url="", conn=None, foo="bar")
+
+
+@responses.activate
+def test_get_collection_objects_paged_1(collection):
+    obj_return = []
+    for x in range(0, 50):
+        obj_return.append(json.loads(STIX_OBJECT))
+
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[:10]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 0-9/50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[10:20]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 10-19/50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[20:30]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 20-29/50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[30:40]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 30-39/50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[40:50]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 40-49/50'})
+    response = []
+
+    for bundle in as_pages(collection.get_objects, per_request=10):
+        response.extend(bundle.get("objects", []))
+
+    assert len(response) == 50
+
+
+@responses.activate
+def test_get_collection_objects_paged_2(collection):
+    obj_return = []
+    for x in range(0, 50):
+        obj_return.append(json.loads(STIX_OBJECT))
+
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[:10]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 0-9/*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[10:20]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 10-19/*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[20:30]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 20-29/*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[30:40]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 30-39/*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[40:50]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items 40-49/*'})
+    responses.add(responses.GET, GET_OBJECTS_URL, "",
+                  status=406, content_type=MEDIA_TYPE_STIX_V20)
+    response = []
+
+    # The status errors (any 400-500) will make it stop
+    with pytest.raises(requests.exceptions.HTTPError):
+        for bundle in as_pages(collection.get_objects, per_request=10):
+            response.extend(bundle.get("objects", []))
+
+    assert len(response) == 50
+
+
+@responses.activate
+def test_get_collection_objects_paged_3(collection):
+    obj_return = []
+    for x in range(0, 50):
+        obj_return.append(json.loads(STIX_OBJECT))
+
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[:10]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[10:20]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[20:30]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[30:40]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */50'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[40:50]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */50'})
+    response = []
+
+    for bundle in as_pages(collection.get_objects, per_request=10):
+        response.extend(bundle.get("objects", []))
+
+    assert len(response) == 50
+
+
+@responses.activate
+def test_get_collection_objects_paged_4(collection):
+    obj_return = []
+    for x in range(0, 50):
+        obj_return.append(json.loads(STIX_OBJECT))
+
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[:10]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[10:20]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[20:30]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[30:40]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */*'})
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[40:50]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20,
+                  headers={'Content-Range': 'items */*'})
+    responses.add(responses.GET, GET_OBJECTS_URL, "",
+                  status=406, content_type=MEDIA_TYPE_STIX_V20)
+    response = []
+
+    # The status errors (any 400-500) will make it stop
+    with pytest.raises(requests.exceptions.HTTPError):
+        for bundle in as_pages(collection.get_objects, per_request=10):
+            response.extend(bundle.get("objects", []))
+
+    assert len(response) == 50
+
+
+@responses.activate
+def test_get_collection_objects_paged_5(collection):
+    obj_return = []
+    for x in range(0, 50):
+        obj_return.append(json.loads(STIX_OBJECT))
+
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[:10]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[10:20]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[20:30]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[30:40]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+    responses.add(responses.GET, GET_OBJECTS_URL,
+                  json.dumps({"type": "bundle", "spec_version": "2.0",
+                              "id": "bundle--5d0092c5-5f74-4287-9642-33f4c354e56d",
+                              "objects": obj_return[40:50]}),
+                  status=200, content_type=MEDIA_TYPE_STIX_V20)
+    responses.add(responses.GET, GET_OBJECTS_URL, "",
+                  status=406, content_type=MEDIA_TYPE_STIX_V20)
+    response = []
+
+    # The status errors (any 400-500) will make it stop
+    with pytest.raises(requests.exceptions.HTTPError):
+        for bundle in as_pages(collection.get_objects, per_request=10):
+            response.extend(bundle.get("objects", []))
+
+    assert len(response) == 50
 
 
 @responses.activate

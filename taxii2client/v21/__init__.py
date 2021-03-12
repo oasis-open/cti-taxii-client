@@ -2,14 +2,45 @@
 from __future__ import unicode_literals
 
 import json
+import logging
 import time
 
 import six
 from six.moves.urllib import parse as urlparse
 
 from .. import MEDIA_TYPE_TAXII_V21
-from ..common import _filter_kwargs_to_query_params, _TAXIIEndpoint
+from ..common import (
+    _filter_kwargs_to_query_params, _grab_total_items_from_resource,
+    _TAXIIEndpoint
+)
 from ..exceptions import AccessError, ValidationError
+
+# Module-level logger
+log = logging.getLogger(__name__)
+
+
+def as_pages(func, per_request=0, *args, **kwargs):
+    """Creates a generator for TAXII 2.1 endpoints that support pagination.
+
+    Args:
+        func (callable): A v21 function that supports paged requests.
+            Currently Get Objects and Get Manifest.
+        per_request (int): How many items per request. Default 0.
+
+    Use args or kwargs to pass filter information or other arguments required to make the call.
+    """
+    envelope = func(limit=per_request, *args, **kwargs)
+    yield envelope
+
+    total_obtained = _grab_total_items_from_resource(envelope)
+    if envelope.get("more", False) and total_obtained != per_request:
+        log.warning("TAXII Server Response with different amount of objects! Setting limit=%s", total_obtained)
+        per_request = total_obtained
+
+    # The while loop will not be executed if the response is received in full.
+    while envelope.get("more", False):
+        envelope = func(limit=per_request, next=envelope.get("next", ""), *args, **kwargs)
+        yield envelope
 
 
 class Status(_TAXIIEndpoint):
