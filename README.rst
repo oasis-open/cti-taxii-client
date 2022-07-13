@@ -201,14 +201,10 @@ additional or substitute Maintainers, per `consensus agreements
 Current Maintainers of this TC Open Repository
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  `Chris Lenk <mailto:clenk@mitre.org>`__; GitHub ID:
-   https://github.com/clenk/; WWW: `MITRE
-   Corporation <https://www.mitre.org/>`__
--  `Rich Piazza <mailto:rpiazza@mitre.org>`__; GitHub ID:
-   https://github.com/rpiazza/; WWW: `MITRE
-   Corporation <https://www.mitre.org/>`__
 -  `Jason Keirstead <mailto:Jason.Keirstead@ca.ibm.com>`__; GitHub ID:
    https://github.com/JasonKeirstead; WWW: `IBM <http://www.ibm.com/>`__
+-  `Duncan Sparrell <mailto:duncan@sfractal.com>`__; GitHub ID:
+   https://github.com/sparrell; WWW: `sFractal <http://sfractal.com/>`__
 
 About OASIS TC Open Repositories
 --------------------------------
