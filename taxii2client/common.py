@@ -195,6 +195,12 @@ class _TAXIIEndpoint(object):
 
 
 class TaxiiResponse(Mapping):
+    """
+    The _HTTPConnection.get call return value is sometimes a dict, and
+    sometimes a requests.Response. Rather than having it guess at what the
+    caller wants to see (and sometimes getting it wrong) wrap the result in a
+    class that can act like either.
+    """
     def __init__(self, resp: requests.Response):
         self.resp      = resp
         self.json_dict = _to_json(self.resp) 
