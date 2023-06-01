@@ -1,11 +1,11 @@
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.4.0
     hooks:
     -   id: trailing-whitespace
     -   id: check-merge-conflict
 -   repo: https://github.com/PyCQA/flake8
-    rev: 3.8.4
+    rev: 6.0.0
     hooks:
     -   id: flake8
         name: Check project styling
