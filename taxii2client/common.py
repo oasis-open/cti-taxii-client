@@ -132,8 +132,6 @@ def _to_json(resp):
 
 def _grab_total_items_from_resource(resp):
     """Returns number of objects in bundle/envelope"""
-    if isinstance(resp, requests.Response):
-        resp = _to_json(resp)
     return len(resp.get("objects", []))
 
 
@@ -196,18 +194,27 @@ class _TAXIIEndpoint(object):
         return False
 
 
-class TaxiiResponse(requests.Response, Mapping):
-    def get(self, key, default=None):
-        return self.json().get(key, default)
-
+class TaxiiResponse(Mapping):
+    def __init__(self, resp: requests.Response):
+        self.resp      = resp
+        self.json_dict = _to_json(self.resp) 
+    
+    def json(self):
+        return self.json_dict
+    
+    # Pass through attributes to the resp so we can get things like headers
+    def __getattr__(self, name):
+        return self.resp.__getattribute__(name)
+    
+    # Mapping implementation for dict (and mostly **) compatibility
     def __iter__(self):
-        return _to_json(self).__iter__()
+        return self.json_dict.__iter__()
 
     def __len__(self):
-        return len(_to_json(self))
+        return len(self.json_dict)
 
     def __getitem__(self, item):
-        return _to_json(self)[item]
+        return self.json_dict[item]
 
 
 class _HTTPConnection(object):
@@ -333,8 +340,7 @@ class _HTTPConnection(object):
             )
             raise TAXIIServiceException(msg.format(content_type, accept))
 
-        resp.__class__ = TaxiiResponse
-        return resp
+        return TaxiiResponse(resp)
 
     def post(self, url, headers=None, params=None, **kwargs):
         """Send a JSON POST request with the given request headers, additional
