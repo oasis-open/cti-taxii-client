@@ -13,7 +13,7 @@ from six.moves.urllib import parse as urlparse
 from .. import MEDIA_TYPE_STIX_V20, MEDIA_TYPE_TAXII_V20
 from ..common import (
     _filter_kwargs_to_query_params, _grab_total_items_from_resource,
-    _TAXIIEndpoint, _to_json
+    _TAXIIEndpoint
 )
 from ..exceptions import AccessError, InvalidJSONError, ValidationError
 
@@ -33,7 +33,7 @@ def as_pages(func, start=0, per_request=0, *args, **kwargs):
     Use args or kwargs to pass filter information or other arguments required to make the call.
     """
     resp = func(start=start, per_request=per_request, *args, **kwargs)
-    yield _to_json(resp)
+    yield resp
     total_obtained, total_available = _grab_total_items(resp)
 
     if total_available > per_request and total_obtained != per_request and total_obtained != float("inf"):
@@ -44,7 +44,7 @@ def as_pages(func, start=0, per_request=0, *args, **kwargs):
     while start < total_available:
 
         resp = func(start=start, per_request=per_request, *args, **kwargs)
-        yield _to_json(resp)
+        yield resp
 
         total_in_request, total_available = _grab_total_items(resp)
         start += per_request
