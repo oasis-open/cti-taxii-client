@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 import datetime
 import logging
 
@@ -195,6 +196,20 @@ class _TAXIIEndpoint(object):
         return False
 
 
+class TaxiiResponse(requests.Response, Mapping):
+    def get(self, key, default=None):
+        return self.json().get(key, default)
+
+    def __iter__(self):
+        return _to_json(self).__iter__()
+
+    def __len__(self):
+        return len(_to_json(self))
+
+    def __getitem__(self, item):
+        return _to_json(self)[item]
+
+
 class _HTTPConnection(object):
     """This library uses the ``requests`` library, which presents a convenience
     API which hides many network details like actual connection objects.  So
@@ -269,7 +284,7 @@ class _HTTPConnection(object):
                     content_type_tokens[0] == 'application/taxii+json'
             )
 
-    def get(self, url, headers=None, params=None):
+    def get(self, url, headers=None, params=None) -> TaxiiResponse:
         """Perform an HTTP GET, using the saved requests.Session and auth info.
         If "Accept" isn't one of the given headers, a default TAXII mime type is
         used.  Regardless, the response type is checked against the accept
@@ -282,7 +297,7 @@ class _HTTPConnection(object):
                 request. (optional)
 
         """
-
+        
         merged_headers = self._merge_headers(headers)
 
         if self.version == "2.0":
@@ -318,10 +333,8 @@ class _HTTPConnection(object):
             )
             raise TAXIIServiceException(msg.format(content_type, accept))
 
-        if "Range" in merged_headers and self.version == "2.0":
-            return resp
-        else:
-            return _to_json(resp)
+        resp.__class__ = TaxiiResponse
+        return resp
 
     def post(self, url, headers=None, params=None, **kwargs):
         """Send a JSON POST request with the given request headers, additional
