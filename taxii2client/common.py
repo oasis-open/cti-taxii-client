@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 import datetime
 import logging
 
@@ -131,8 +132,6 @@ def _to_json(resp):
 
 def _grab_total_items_from_resource(resp):
     """Returns number of objects in bundle/envelope"""
-    if isinstance(resp, requests.Response):
-        resp = _to_json(resp)
     return len(resp.get("objects", []))
 
 
@@ -193,6 +192,35 @@ class _TAXIIEndpoint(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
         return False
+
+
+class TaxiiResponse(Mapping):
+    """
+    The _HTTPConnection.get call return value is sometimes a dict, and
+    sometimes a requests.Response. Rather than having it guess at what the
+    caller wants to see (and sometimes getting it wrong) wrap the result in a
+    class that can act like either.
+    """
+    def __init__(self, resp: requests.Response):
+        self.resp = resp
+        self.json_dict = _to_json(self.resp)
+
+    def json(self):
+        return self.json_dict
+
+    # Pass through attributes to the resp so we can get things like headers
+    def __getattr__(self, name):
+        return self.resp.__getattribute__(name)
+
+    # Mapping implementation for dict (and mostly **) compatibility
+    def __iter__(self):
+        return self.json_dict.__iter__()
+
+    def __len__(self):
+        return len(self.json_dict)
+
+    def __getitem__(self, item):
+        return self.json_dict[item]
 
 
 class _HTTPConnection(object):
@@ -269,7 +297,7 @@ class _HTTPConnection(object):
                     content_type_tokens[0] == 'application/taxii+json'
             )
 
-    def get(self, url, headers=None, params=None):
+    def get(self, url, headers=None, params=None) -> TaxiiResponse:
         """Perform an HTTP GET, using the saved requests.Session and auth info.
         If "Accept" isn't one of the given headers, a default TAXII mime type is
         used.  Regardless, the response type is checked against the accept
@@ -318,10 +346,7 @@ class _HTTPConnection(object):
             )
             raise TAXIIServiceException(msg.format(content_type, accept))
 
-        if "Range" in merged_headers and self.version == "2.0":
-            return resp
-        else:
-            return _to_json(resp)
+        return TaxiiResponse(resp)
 
     def post(self, url, headers=None, params=None, **kwargs):
         """Send a JSON POST request with the given request headers, additional
