@@ -202,16 +202,16 @@ class TaxiiResponse(Mapping):
     class that can act like either.
     """
     def __init__(self, resp: requests.Response):
-        self.resp      = resp
-        self.json_dict = _to_json(self.resp) 
-    
+        self.resp = resp
+        self.json_dict = _to_json(self.resp)
+
     def json(self):
         return self.json_dict
-    
+
     # Pass through attributes to the resp so we can get things like headers
     def __getattr__(self, name):
         return self.resp.__getattribute__(name)
-    
+
     # Mapping implementation for dict (and mostly **) compatibility
     def __iter__(self):
         return self.json_dict.__iter__()
@@ -310,7 +310,7 @@ class _HTTPConnection(object):
                 request. (optional)
 
         """
-        
+
         merged_headers = self._merge_headers(headers)
 
         if self.version == "2.0":
